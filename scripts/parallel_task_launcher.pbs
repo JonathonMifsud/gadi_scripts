@@ -1,0 +1,36 @@
+#!/bin/bash
+# parallel_task_launcher.pbs
+# Universal launcher for nci-parallel jobs
+
+# Static defaults (can be overridden via qsub CLI)
+#PBS -N parallel_task
+#PBS -l ncpus=6
+#PBS -l mem=12GB
+#PBS -l walltime=04:00:00
+#PBS -l storage=gdata/fo27+scratch/fo27
+#PBS -q normal
+#PBS -P fo27
+#PBS -l wd
+
+echo "🚀 Parallel job launched at: $(date)"
+echo "Task script : $task_script"
+echo "Input list  : $input_list"
+echo "NCPUS       : $PBS_NCPUS"
+
+module load nci-parallel/1.0.0a
+
+input_cmd_file="$PBS_JOBFS/parallel_cmds.txt"
+
+# Build command list
+if [[ ! -x "$task_script" ]]; then
+  sed "s|^|bash $task_script |" "$input_list" > "$input_cmd_file"
+else
+  sed "s|^|$task_script |" "$input_list" > "$input_cmd_file"
+fi
+
+# Run with mpirun
+mpirun -np "$PBS_NCPUS" \
+  --map-by node:PE=1 \
+  nci-parallel --input-file "$input_cmd_file" --timeout 12000 --verbose -o ./logs/
+
+echo "✅ Job completed at: $(date)"
