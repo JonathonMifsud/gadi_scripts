@@ -1,0 +1,67 @@
+#!/bin/bash
+#PBS -l ncpus=6
+#PBS -l mem=6GB
+#PBS -q normal
+#PBS -P fo27
+#PBS -l walltime=00:05:00
+#PBS -l storage=gdata/fo27+scratch/tn81+scratch/fo27
+#PBS -l wd
+
+# ----------------------------------------
+# NCI Job: Parallel Task Launcher
+# ----------------------------------------
+
+# Move to script directory
+cd /scratch/fo27/jm8761/para_test/scripts || exit 1
+
+# Set date for logs
+log_date=$(date +%d%m%Y)
+
+# Redirect overall job output to dated log files
+exec > "nci_parallel_test_${log_date}.o" 2> "nci_parallel_test_${log_date}.e"
+
+# Define paths
+accession_list="/scratch/fo27/jm8761/para_test/accession_list"
+script_to_run="/scratch/fo27/jm8761/para_test/scripts/test_program.sh"
+input_cmd_file="$PBS_JOBFS/input_cmd"
+
+# Validate input files
+if [[ ! -f "$accession_list" ]]; then
+  echo "Error: Accession list '$accession_list' not found."
+  exit 1
+fi
+
+# Build input command list for nci-parallel
+if [[ ! -x "$script_to_run" ]]; then
+  echo "Warning: '$script_to_run' is not executable — prepending 'bash'"
+  sed "s|^|bash ${script_to_run} |" "$accession_list" > "$input_cmd_file"
+else
+  sed "s|^|${script_to_run} |" "$accession_list" > "$input_cmd_file"
+fi
+
+# Load required module
+module load nci-parallel/1.0.0a
+
+# Print job metadata
+echo "Running on: $(hostname)"
+echo "Start time: $(date)"
+echo "Working directory: $(pwd)"
+echo "Allocated CPUs:"
+cat "$PBS_NODEFILE"
+
+# Parallel job parameters
+ncpus_per_task=1
+num_nodes=$(( PBS_NCPUS / PBS_NCI_NCPUS_PER_NODE ))
+tasks_per_node=$(( PBS_NCI_NCPUS_PER_NODE / ncpus_per_task ))
+total_procs=$(( num_nodes * tasks_per_node ))
+
+# Run parallel jobs using nci-parallel + mpirun
+mpirun -np "$total_procs" \
+       --map-by node:PE=${ncpus_per_task} \
+       nci-parallel \
+       --input-file "$input_cmd_file" \
+       --timeout 4000 \
+       --verbose \
+       -o ./
+
+echo "Job finished at: $(date)"
