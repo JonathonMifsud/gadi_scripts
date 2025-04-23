@@ -6,7 +6,7 @@
 ###############################################################################################################
 
 #PBS -N logan_clustering
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 
 module load mmseqs2/15-6f452  

@@ -15,7 +15,7 @@
 # this will output a file of accessions that have not downloaded correctly
 
 #PBS -N ascp_SRA_download
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 #PBS -l select=1:ncpus=2:mem=30GB
 

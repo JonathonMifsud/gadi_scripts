@@ -12,7 +12,7 @@
 
 #PBS -N blastx_RdRp_array
 #PBS -l select=1:ncpus=6:mem=20GB
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 
 ##load modules

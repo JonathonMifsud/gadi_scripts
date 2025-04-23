@@ -9,7 +9,7 @@
 # It will run several trim settings
 
 #PBS -N align_scav
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -l select=1:ncpus=4:mem=20GB
 
 # Load required modules

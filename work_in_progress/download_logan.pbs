@@ -7,7 +7,7 @@
 ###############################################################################################################
 
 #PBS -N logan_download
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 
 module load zstd

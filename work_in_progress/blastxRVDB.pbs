@@ -13,7 +13,7 @@
 
 #PBS -N blastx_RVDB_array
 #PBS -l select=1:ncpus=12:mem=120GB
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 
 ##load modules

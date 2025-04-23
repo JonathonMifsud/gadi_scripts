@@ -8,7 +8,7 @@
 # PBS job options
 #PBS -P $root_project
 #PBS -N ccmetagen
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -l select=1:ncpus=4:mem=130GB
 #PBS -l walltime=84:00:00
 #PBS -q defaultQ

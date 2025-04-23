@@ -10,7 +10,7 @@
 #PBS -N blastp_custom_array
 #PBS -l select=1:ncpus=12:mem=120GB
 #PBS -l walltime=48:00:00
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 #PBS -m abe
 
 ## load modules

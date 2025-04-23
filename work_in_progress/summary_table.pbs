@@ -9,7 +9,7 @@
 
 #PBS -N summary_table
 #PBS -l select=1:ncpus=8:mem=120GB
-#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -M  # <-- will be set by setup.sh
 
 ## Blast output contigs should already be annotated with library ID
 
