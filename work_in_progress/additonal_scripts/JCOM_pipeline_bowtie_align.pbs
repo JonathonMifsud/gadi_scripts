@@ -1,0 +1,89 @@
+#!/bin/bash
+#PBS -N bowtie2_mapping
+#PBS -l select=1:ncpus=12:mem=80GB
+#PBS -M jmif9945@uni.sydney.edu.au
+#PBS -m abe
+#PBS -l walltime=48:00:00
+#PBS -j oe
+#PBS -q defaultQ
+#PBS -P $root_project
+
+# Load modules (if required by your environment)
+module load bowtie2
+module load samtools
+module load bedtools
+
+# Read in the CSV and extract the specific line for this job
+readarray -t myarray < "$mapping_spreadsheet"
+export line=${myarray["$PBS_ARRAY_INDEX"]}
+
+# Extract columns from the CSV, and split the first field on semicolons to handle multiple libraries
+export library=$(echo $line | cut -f1 -d,)
+export reference=$(echo $line | cut -f2 -d,)
+export identity=$(echo $line | cut -f3 -d,)
+
+# Define input and working directory
+input="/scratch/$root_project/$project/trimmed_reads/"
+wd="/project/$root_project/$project/mapping/"
+reference_fasta="/project/$root_project/$project/mapping/reference/$reference"
+reference_index="/project/$root_project/$project/mapping/reference/${reference}_index"
+
+# Replace semicolons in library names with underscores for file compatibility
+sanitized_library=$(echo $library | tr ';' '_')
+
+# Split multiple libraries (R1 and R2) using the semicolon as a delimiter
+# Append the path and suffix to each library ID
+export libraries_R1=$(echo $library | tr ';' ',' | awk -v input="$input" '{split($0, a, ","); for (i in a) print input a[i] "_trimmed_R1.fastq.gz"}' | tr '\n' ',')
+export libraries_R2=$(echo $library | tr ';' ',' | awk -v input="$input" '{split($0, a, ","); for (i in a) print input a[i] "_trimmed_R2.fastq.gz"}' | tr '\n' ',')
+
+# Remove trailing commas from libraries_R1 and libraries_R2
+libraries_R1=${libraries_R1%,}
+libraries_R2=${libraries_R2%,}
+
+# Build Bowtie2 index (only needs to be done once)
+bowtie2-build "$reference_fasta" "$reference_index"
+
+# Align reads using Bowtie2 with multiple libraries
+bowtie2 -x "$reference_index" \
+        -1 "$libraries_R1" \
+        -2 "$libraries_R2" \
+        -S "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.sam \
+        --very-sensitive \
+        --threads 12 \
+        --reorder
+
+# Convert SAM to BAM
+samtools view -bS "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.sam > "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.bam
+rm "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.sam
+
+# Sort the BAM file with 12 threads and allocate memory
+samtools sort -@ 12 -m 5G "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.bam -o "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped_sorted.bam
+rm "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped.bam
+
+# Index the BAM file
+samtools index "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped_sorted.bam
+
+bam_file="$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped_sorted.bam
+sequence_name=$(basename "$bam_file" | cut -d'.' -f1)
+
+# Run samtools flagstat and extract relevant information
+samtools flagstat "$bam_file" | tee "$bam_file"_flagstat_raw_output.txt | awk -v seq_name="$sequence_name" '
+/^[0-9]+ \+ [0-9]+ mapped / {mapped=$1}
+/paired in sequencing/ {paired=$1}
+/properly paired/ {properly_paired=$1}
+/with itself and mate mapped/ {mate_mapped=$1}
+/singletons/ {singletons=$1}
+END {
+    # Print output in CSV format
+    print "Sequence, File, Mapped, Paired, Properly Paired, Mate Mapped, Singletons"
+    if (mapped == "") {mapped=0}  # Fallback in case "mapped" is not captured
+    print seq_name "," "'$bam_file'," mapped "," paired "," properly_paired "," mate_mapped "," singletons
+}' > "$wd"/"${sequence_name}_flagstat_output.csv"
+
+# Calculate average depth 
+samtools depth -a "$wd"/"$sanitized_library"_"$reference"_"$identity"_mapped_sorted.bam | tee "$wd"/"$sanitized_library"_"$reference"_"$identity"_raw_coverage.txt | \
+awk -v fname="$sanitized_library"_"$reference"_"$identity"_mapped_sorted.bam '{sum+=$3} END { print fname "," sum/NR }' > "$wd"/"$sanitized_library"_"$reference"_"$identity"_coverage.txt
+
+# Filter out unmapped reads
+samtools view -b -F 4 "$bam_file" > "$bam_file"_mapped_only.bam
+rm "$bam_file"

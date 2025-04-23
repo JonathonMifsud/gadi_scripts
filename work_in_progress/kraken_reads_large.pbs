@@ -1,0 +1,215 @@
+#!/bin/bash
+#PBS -N kraken_benchmark
+#PBS -P jcomvirome
+#PBS -l select=1:ncpus=24:mem=2000GB
+#PBS -l walltime=300:00:00
+
+# Load Conda environment
+function condaSetUp() {
+    if ! command -v conda &> /dev/null; then
+        echo "Error: Conda is not available."
+        exit 1
+    fi
+    CONDA_BASE=$(conda info --base)
+    source "$CONDA_BASE/etc/profile.d/conda.sh"
+    conda activate kraken_suite || {
+        echo "Error: Failed to activate Conda environment 'kraken_suite'."
+        exit 1
+    }
+}
+
+condaSetUp
+# The python versions seem to cause a GLIBC error; this sometimes will fix it
+module unload python
+module load python
+# Don't ask why!
+
+# Read in list of file names or accessions
+readarray -t myarray < "$file_of_accessions" || {
+    echo "Error: Failed to read accession file '$file_of_accessions'."
+    exit 1
+}
+
+if [[ ${#myarray[@]} -eq 0 ]]; then
+    echo "Error: Accession file '$file_of_accessions' is empty."
+    exit 1
+fi
+
+# Setting variables
+wd="/scratch/$root_project/$project/kraken"
+inpath="/scratch/$root_project/$project/trimmed_reads"
+outpath="/project/$root_project/$project/kraken"
+threads=24
+
+# New variable for kraken_output files in /scratch
+scratch_output_path="$wd/kraken_outputs"
+
+# If custom database is provided, use it; otherwise, default to the original db path
+readonly db_original="${db:-/scratch/VELAB/Databases/kraken_db}"
+
+# Ensure the database directory exists
+if [[ ! -d "$db_original" ]]; then
+    echo "Error: Database directory '$db_original' does not exist."
+    exit 1
+fi
+
+# Calculate the size of the database directory
+echo "Estimating database size..."
+db_size_output=$(du -s -BG "$db_original")
+db_size=$(echo "$db_size_output" | cut -f1 | tr -d 'G')
+echo "Database size: ${db_size}G"
+
+# Set required_space, adding an extra buffer (e.g., 10G)
+buffer_space=10
+required_space=$((db_size + buffer_space))
+echo "Required space in /dev/shm: ${required_space}G"
+
+# Create working directory if it doesn't exist
+mkdir -p "$wd" "$scratch_output_path" || {
+    echo "Error: Cannot create working directory '$wd' or '$scratch_output_path'."
+    exit 1
+}
+
+cd "$wd" || {
+    echo "Error: Cannot change directory to '$wd'."
+    exit 1
+}
+
+# Define a function to time commands with labels
+function time_command() {
+    local cmd_label="$1"
+    shift
+    echo "Running command: $cmd_label"
+    /usr/bin/time -f "\nCommand: $cmd_label\nElapsed Time: %E\nUser Time: %U\nSystem Time: %S\nCPU Usage: %P\n" "$@" || {
+        echo "Error: Command '$cmd_label' failed."
+        exit 1
+    }
+}
+
+# Function to perform cleanup on exit
+function cleanup {
+    echo "Cleaning up..."
+    if [[ "$use_shm" == "yes" && -d "$db_shm" ]]; then
+        echo "Removing database copy at '$db_shm'"
+        rm -rf "$db_shm" > /dev/null 2>&1
+    fi
+}
+trap cleanup EXIT
+
+# Mode selection: Use shared memory or not
+# Set use_shm="yes" to copy database to /dev/shm, "no" to use database from disk
+# You can set this variable externally or modify it here
+use_shm="${use_shm:-yes}"  # Default to "yes" if not set
+
+if [[ "$use_shm" == "yes" ]]; then
+    echo "Mode: Using database from /dev/shm"
+
+    # Check the size of /dev/shm
+    echo "Checking /dev/shm size..."
+    shm_size=$(df -h /dev/shm | awk 'NR==2 {print $2}')
+    shm_avail=$(df -h /dev/shm | awk 'NR==2 {print $4}')
+    echo "Current /dev/shm size: $shm_size, Available: $shm_avail"
+
+    # Verify /dev/shm has enough space
+    available_space=$(df -BG --output=avail /dev/shm | tail -1 | tr -d 'G')
+
+    if (( available_space < required_space )); then
+        echo "Error: Not enough space in /dev/shm. Required: ${required_space}G, Available: ${available_space}G"
+        exit 1
+    fi
+
+    # Copy database to /dev/shm
+    echo "Copying database to /dev/shm..."
+    db_shm="/dev/shm/kraken_db"
+    if [[ -d "$db_shm" ]]; then
+        echo "Warning: Database directory '$db_shm' already exists. Removing..."
+        echo "Removing database copy at '$db_shm'"
+        rm -rf "$db_shm" || {
+            echo "Error: Failed to remove existing database directory '$db_shm'."
+            exit 1
+        }
+    fi
+
+    # Verify that db_shm is not empty and points to /dev/shm
+    if [[ -z "$db_shm" || "$db_shm" != "/dev/shm/"* ]]; then
+        echo "Error: db_shm is not set correctly. Aborting to prevent accidental deletion."
+        exit 1
+    fi
+
+    time_command "Copy Database to /dev/shm" cp -r "$db_original" "$db_shm"
+
+    # Use the database from /dev/shm
+    db="$db_shm"
+else
+    echo "Mode: Using database directly from disk"
+    # Use the database from its original location
+    db="$db_original"
+fi
+
+# Start overall time measurement
+overall_start_time=$(date +%s)
+
+# Loop over each library ID
+echo "Starting Kraken2 processing..."
+
+for library_run in "${myarray[@]}"; do
+    library_run_without_path="$(basename -- "$library_run")"
+    library_id="${library_run_without_path%%.*}"  # Remove file extension
+
+    # Log the start time for each library
+    echo "Processing library ID '$library_id'..."
+    library_start_time=$(date +%s)
+
+    # Check if input files exist
+    fq1="$inpath/${library_id}_trimmed_R1.fastq.gz"
+    fq2="$inpath/${library_id}_trimmed_R2.fastq.gz"
+
+    if [[ ! -f "$fq1" ]]; then
+        echo "Error: Input file '$fq1' does not exist for library ID '$library_id'. Skipping..."
+        continue
+    fi
+
+    if [[ ! -f "$fq2" ]]; then
+        echo "Error: Input file '$fq2' does not exist for library ID '$library_id'. Skipping..."
+        continue
+    fi
+
+    # Execute Kraken2
+    time_command "Kraken2 for $library_id (use_shm=$use_shm)" kraken2 --db "$db" --paired "$fq1" "$fq2" \
+        --output "$scratch_output_path/${library_id}_kraken_output" \
+        --report "$outpath/${library_id}_kraken_report" \
+        --gzip-compressed \
+        --use-names \
+        --memory-mapping \
+        --minimum-hit-groups 3 \
+        --report-minimizer-data \
+        --threads $threads
+
+    # Run Bracken
+    time_command "Bracken for $library_id (use_shm=$use_shm)" bracken -d "$db" -i "$outpath/${library_id}_kraken_report" -r 250 -l S -t 15 \
+        -o "$outpath/${library_id}.bracken" -w "$outpath/${library_id}.breport"
+
+    # Convert Bracken report to Krona input
+    time_command "kreport2krona.py for $library_id (use_shm=$use_shm)" kreport2krona.py -r "$outpath/${library_id}.breport" -o "$outpath/${library_id}.b.krona.txt" \
+        --no-intermediate-ranks
+
+    # Generate Krona plot
+    time_command "ktImportText for $library_id (use_shm=$use_shm)" ktImportText "$outpath/${library_id}.b.krona.txt" -o "$outpath/${library_id}.b.krona.html"
+
+    # Log the end time for the current library
+    library_end_time=$(date +%s)
+    library_elapsed_time=$((library_end_time - library_start_time))
+    echo "Successfully processed library ID '$library_id' in $library_elapsed_time seconds."
+done
+
+# End overall time measurement
+overall_end_time=$(date +%s)
+overall_elapsed_time=$((overall_end_time - overall_start_time))
+echo "Kraken2 processing completed in $overall_elapsed_time seconds."
+
+# Output total time based on mode
+if [[ "$use_shm" == "yes" ]]; then
+    echo "Total processing time using /dev/shm: $overall_elapsed_time seconds."
+else
+    echo "Total processing time using database from disk: $overall_elapsed_time seconds."
+fi
