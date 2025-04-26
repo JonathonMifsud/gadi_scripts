@@ -149,6 +149,17 @@ fi
 mkdir -p "$log_dir"
 log_date=$(date +%Y%m%d)
 
+# --- Efficiency Check --- Not needed for this script but left for consistency
+num_tasks=$(wc -l < "$input_list")
+effective_ncpus=$(( num_tasks * ncpus_per_task ))
+
+if (( effective_ncpus < ncpus )); then
+  echo -e "\033[1;33m⚠️ WARNING:\033[0m You requested $ncpus CPUs but only ${effective_ncpus} would be used efficiently for $num_tasks tasks."
+  echo -e "\033[1;33m⚠️ Consider reducing -c option to ${effective_ncpus} CPUs to optimize resource usage.\033[0m"
+  echo ""
+fi
+
+
 # ----------------------------------------
 # Submit PBS Jobs
 # ----------------------------------------
