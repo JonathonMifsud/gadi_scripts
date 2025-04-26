@@ -9,18 +9,19 @@
 
 set -euo pipefail
 
-# --- Define paths ---
-root_project="${ROOT_PROJECT}"
-user=$(whoami)
-project="${PROJECT_NAME}"
-CPU="${NCPUS_PER_TASK}"
-
 # --- Detect manual execution ---
 if [[ -z "${PBS_JOBID:-}" ]]; then
   echo "⚠️ WARNING: It looks like you are manually executing this worker script."
-  echo "Please use the run script instead (e.g., ./${project}_trim_reads_run.sh) to submit jobs properly via PBS."
+  echo "Please use the run script instead (e.g., ./yourproject_download_sra_run.sh) to submit jobs properly via PBS."
   echo ""
 fi
+
+# --- Define paths ---
+root_project="${ROOT_PROJECT}"
+user=$(whoami) 
+project="${PROJECT_NAME}"
+CPU="${NCPUS_PER_TASK}"
+
 
 # --- Input check ---
 if [[ $# -lt 1 ]]; then

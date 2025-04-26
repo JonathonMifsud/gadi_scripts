@@ -63,14 +63,15 @@ show_help() {
   echo -e ""
 
   echo -e "\033[1;34mOptions:\033[0m"
-  echo "  -j    Job name [default: trim_reads]"
-  echo "  -c    Number of CPUs [default: 4]"
-  echo "  -m    Memory per job [default: 12GB]"
-  echo "  -t    Walltime [default: 04:00:00]"
-  echo "  -q    PBS queue [default: normal]"
+  echo "  -j    Job name [default: ${job_name}]"
+  echo "  -c    Number of CPUs [default: ${ncpus}]"
+  echo "  -m    Memory per job [default: ${mem}GB]"
+  echo "  -k    Number of CPUs per individual task [default: ${ncpus_per_task}]"
+  echo "  -t    Walltime [default: ${walltime}]"
+  echo "  -q    PBS queue [default: ${queue}]"
   echo "  -p    NCI project code [default: {$root_project}]"
   echo "  -r    Storage resources [default: gdata/{$root_project}+scratch/{$root_project}]"
-  echo "  -n    Number of parallel jobs to run [default: 1]"
+  echo "  -n    Number of parallel jobs to run [default: ${num_jobs}]"
   echo "  -h    Show this help message"
   echo -e ""
 
@@ -97,7 +98,7 @@ show_help() {
 # Argument Parsing
 # ----------------------------------------
 
-while getopts "f:j:c:m:t:q:p:r:n:h" opt; do
+while getopts "f:j:c:m:t:q:p:r:n:k:h" opt; do
   case $opt in
     f)
       if [[ "$OPTARG" = /* ]]; then
@@ -114,9 +115,11 @@ while getopts "f:j:c:m:t:q:p:r:n:h" opt; do
     p) root_project="$OPTARG" ;;
     r) storage="$OPTARG" ;;
     n) num_jobs="$OPTARG" ;;
+    k) ncpus_per_task="$OPTARG" ;;
     h|*) show_help ;;
   esac
 done
+
 
 # ----------------------------------------
 # Validation
@@ -152,8 +155,8 @@ num_tasks=$(wc -l < "$input_list")
 effective_ncpus=$(( num_tasks * ncpus_per_task ))
 
 if (( effective_ncpus < ncpus )); then
-  echo -e "\033[1;33m⚠️ WARNING:\033[0m You requested $ncpus CPUs but only ${effective_ncpus} would be used efficiently for $num_tasks tasks."
-  echo -e "\033[1;33m⚠️ Consider reducing -c option to ${effective_ncpus} CPUs to optimize resource usage.\033[0m"
+  echo -e "\033[1;33m⚠️ WARNING:\033[0m You requested $ncpus CPUs but only ${effective_ncpus} is allocated per task of which there are ${num_tasks} in total."
+  echo -e "\033[1;33m⚠️ Consider reducing -c option to ${effective_ncpus} CPUs to optimize resource usage or increasing the number of CPUs per task ${ncpus_per_task} \033[0m"
   echo ""
 fi
 
