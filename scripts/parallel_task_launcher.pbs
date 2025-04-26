@@ -90,8 +90,16 @@ if (( total_procs < 1 )); then
 fi
 
 if (( total_procs < PBS_NCPUS / 2 )); then
-  echo "⚠️ WARNING: Fewer MPI ranks ($total_procs) than CPUs ($PBS_NCPUS)."
-  echo "Consider tuning your settings for better CPU utilization."
+  echo -e "\033[1;33m⚠️ WARNING:\033[0m Fewer MPI ranks ($total_procs) than CPUs allocated ($PBS_NCPUS)."
+  echo -e "▶️ This happens because you requested $PBS_NCPUS CPUs total and set each task to use ${NCPUS_PER_TASK} CPUs."
+  echo -e "▶️ Therefore, $PBS_NCPUS ÷ ${NCPUS_PER_TASK} = $total_procs parallel tasks possible."
+  echo -e ""
+  echo -e "\033[1;34mℹ️ Example:\033[0m"
+  echo -e "   If you have more libraries in your input list (e.g., 3 libraries) but fewer tasks launching (e.g., 2 ranks),"
+  echo -e "   consider lowering NCPUS_PER_TASK to 4 or 2 to allow more tasks to run simultaneously."
+  echo -e ""
+  echo -e "\033[1;32m✅ Tip:\033[0m Use the '-k' option in your run script to adjust NCPUS_PER_TASK dynamically."
+  echo ""
 fi
 
 echo "CPUs per task: $ncpus_per_task"
