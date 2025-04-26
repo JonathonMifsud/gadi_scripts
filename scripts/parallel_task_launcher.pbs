@@ -13,7 +13,7 @@ set -euo pipefail
 #PBS -l wd
 
 # --- Load environment variables early ---
-project="${PROJECT_NAME:-myproject}"  # Default if missing
+project="${PROJECT_NAME}" 
 
 # --- Detect direct manual qsub of launcher ---
 if [[ -z "${input_list:-}" || -z "${task_script:-}" ]]; then
