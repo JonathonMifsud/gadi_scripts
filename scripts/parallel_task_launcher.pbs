@@ -1,36 +1,56 @@
 #!/bin/bash
-# parallel_task_launcher.pbs
-# Universal launcher for nci-parallel jobs
 
-# Static defaults (can be overridden via qsub CLI)
+############################################################################################################
+# Script Name: parallel_task_launcher.pbs
+# Author: JCO Mifsud jonathon.mifsud1@gmail.com
+# Description: Generic PBS job launcher for parallel execution of task arrays using nci-parallel and mpirun.
+# GitHub: https://github.com/JonathonMifsud/gadi_scripts
+############################################################################################################
+
+set -euo pipefail
+
+# The PBS header values are automatically added by the wrapper script
+
 #PBS -N parallel_task
-#PBS -l ncpus=6
-#PBS -l mem=12GB
-#PBS -l walltime=04:00:00
-#PBS -l storage=gdata/fo27+scratch/fo27
-#PBS -q normal
-#PBS -P fo27
 #PBS -l wd
 
-echo "🚀 Parallel job launched at: $(date)"
-echo "Task script : $task_script"
-echo "Input list  : $input_list"
-echo "NCPUS       : $PBS_NCPUS"
+start_time=$(date)
+echo "🚀 Parallel job started at: $start_time"
+echo "📦 User:        ${USER_ID}"
+echo "📂 Project dir: /scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}"
+echo "📋 Task script: $task_script"
+echo "📋 Input list : $input_list"
+echo "🧠 CPUs:       $PBS_NCPUS"
+echo "🧠 Nodefile:"
+cat "$PBS_NODEFILE"
+echo "📅 Date:       $(date +%Y-%m-%d)"
+echo "🕓 PBS Job ID: $PBS_JOBID"
+echo "📁 Logs will be stored in: /scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}/logs"
+
+log_dir="/scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}/logs"
+mkdir -p "$log_dir"
 
 module load nci-parallel/1.0.0a
 
 input_cmd_file="$PBS_JOBFS/parallel_cmds.txt"
-
-# Build command list
 if [[ ! -x "$task_script" ]]; then
   sed "s|^|bash $task_script |" "$input_list" > "$input_cmd_file"
 else
   sed "s|^|$task_script |" "$input_list" > "$input_cmd_file"
 fi
 
-# Run with mpirun
+echo "🔢 Total accessions: $(wc -l < "$input_list")"
+
+echo "📄 Commands written to: $input_cmd_file"
+echo "📋 First 3 commands:"
+head -n 3 "$input_cmd_file"
+
+
+# Execute tasks
 mpirun -np "$PBS_NCPUS" \
   --map-by node:PE=1 \
-  nci-parallel --input-file "$input_cmd_file" --timeout 12000 --verbose -o ./logs/
+  nci-parallel --input-file "$input_cmd_file" --timeout 12000 --verbose
 
-echo "✅ Job completed at: $(date)"
+end_time=$(date)
+echo "✅ Job completed at: $end_time"
+echo "🗂️  Individual logs are saved per accession under: $log_dir"
