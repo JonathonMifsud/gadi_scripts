@@ -8,6 +8,7 @@
 ############################################################################################################
 
 set -euo pipefail
+trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # --- Detect manual execution ---
 if [[ -z "${PBS_JOBID:-}" ]]; then
