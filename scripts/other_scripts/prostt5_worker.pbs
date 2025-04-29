@@ -3,51 +3,59 @@
 
 ################################################################################
 # Script Name: prostt5_worker.pbs
-# Author: JCO Mifsud
-# Description: Worker script that runs ProstT5 AA2fold prediction on Gadi nodes.
-# GitHub: https://github.com/JonathonMifsud/gadi_scripts
+# Author: JCO Mifsud 
+# Description: Worker script that runs ProstT5 prediction inside Singularity container on Gadi.
 ################################################################################
 
 set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
+echo "[INFO] Starting ProstT5 worker inside Singularity container..."
+
 # ----------------------------------------
 # Load Required Modules
 # ----------------------------------------
 
-module load python3/3.10.4 || { echo "❌ ERROR: Failed to load python3/3.10.4 module"; exit 1; }
-module load pytorch/1.10.0 || { echo "❌ ERROR: Failed to load pytorch/1.10.0 module"; exit 1; }
+module purge
+module load singularity || { echo "❌ ERROR: Failed to load singularity module"; exit 1; }
 
 # ----------------------------------------
-# Activate Virtual Environment
+# Container Settings
 # ----------------------------------------
 
-if [[ ! -d "${VENV_PATH}" ]]; then
-  echo "❌ ERROR: Virtual environment not found at ${VENV_PATH}"
-  exit 1
+CONTAINER_PATH="/g/data/fo27/software/singularity/images/pytorch_2.1.0-cuda11.8-cudnn8-runtime.sif"
+
+# ----------------------------------------
+# CUDA Check inside container
+# ----------------------------------------
+
+echo "[INFO] Checking CUDA inside container..."
+cuda_status=$(singularity exec --nv \
+    --bind /g/data:/g/data,/scratch:/scratch,/home:/home \
+    "${CONTAINER_PATH}" \
+    python3 -c "import torch; print('cuda' if torch.cuda.is_available() else 'cpu')")
+
+if [[ "$DEVICE" == "cuda" && "$cuda_status" == "cpu" ]]; then
+    echo "❌ ERROR: CUDA device requested but no GPU detected inside container!"
+    echo "❌ Aborting job to avoid slow CPU fallback."
+    exit 1
 fi
 
-source "${VENV_PATH}/bin/activate"
+echo "[INFO] CUDA check passed. Device available: $cuda_status"
 
 # ----------------------------------------
-# Check Transformers Installation
+# Run ProstT5 inside container
 # ----------------------------------------
 
-if ! python3 -c "import transformers" &>/dev/null; then
-  echo "❌ ERROR: transformers not installed in virtualenv."
-  exit 1
-fi
+echo "[INFO] Running ProstT5 prediction..."
 
-# ----------------------------------------
-# Run ProstT5 Prediction
-# ----------------------------------------
+singularity exec --nv \
+    --bind /g/data:/g/data,/scratch:/scratch,/home:/home \
+    "${CONTAINER_PATH}" \
+    python3 "${SCRIPT_PATH}" \
+        -i "${INPUT_FASTA}" \
+        -o "${OUTPUT_FASTA}" \
+        --device "${DEVICE}" \
+        --progress-every 1
 
-echo "[INFO] Starting ProstT5 prediction..."
-
-python3 "${SCRIPT_PATH}" \
-    -i "${INPUT_FASTA}" \
-    -o "${OUTPUT_FASTA}" \
-    --device "${DEVICE}" \
-    --progress-every 10
-
-echo "[INFO] ProstT5 prediction completed successfully."
+echo "[INFO] ProstT5 prediction completed successfully inside container."

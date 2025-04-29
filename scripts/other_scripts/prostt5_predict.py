@@ -43,11 +43,12 @@ def main(args):
     sequences = read_fasta(args.input)
     print(f"[INFO] Loaded {len(sequences)} sequences.")
 
-    # Step 2: Load ProstT5 model
-    print("[INFO] Loading ProstT5 model...")
+    # Step 2: Load ProstT5 model from local path
+    model_dir = "/g/data/fo27/models/prost5/"
+    print(f"[INFO] Loading ProstT5 model from {model_dir}...")
     try:
-        tokenizer = T5Tokenizer.from_pretrained('Rostlab/ProstT5', do_lower_case=False)
-        model = AutoModelForSeq2SeqLM.from_pretrained('Rostlab/ProstT5').to(device)
+        tokenizer = T5Tokenizer.from_pretrained(model_dir, do_lower_case=False)
+        model = AutoModelForSeq2SeqLM.from_pretrained(model_dir).to(device)
         model = model.float()
     except Exception as e:
         print(f"[ERROR] Failed to load ProstT5 model: {e}")
@@ -87,7 +88,7 @@ def main(args):
         if idx % args.progress_every == 0 or idx == len(sequences):
             elapsed = time.time() - start_time
             print(f"[INFO] Progress: {idx}/{len(sequences)} ({(idx/len(sequences))*100:.2f}%). Elapsed: {elapsed:.1f}s")
-            os.sys.stdout.flush()
+            sys.stdout.flush()
 
     # Step 4: Write output FASTA
     print(f"\n[INFO] Writing output to: {args.output}")
