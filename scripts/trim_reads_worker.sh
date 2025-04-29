@@ -8,6 +8,7 @@
 ############################################################################################################
 
 set -euo pipefail
+trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # --- Detect manual execution ---
 if [[ -z "${PBS_JOBID:-}" ]]; then
@@ -85,6 +86,29 @@ elif [[ "$layout" == "paired" ]]; then
     "${trimmed_dir}/${library_id}_trimmed_R2.fastq.gz" "${trimmed_dir}/${library_id}_unpaired_R2.fastq.gz" \
     ILLUMINACLIP:$(basename "$adapter_paired"):2:30:10 \
     SLIDINGWINDOW:4:5 LEADING:5 TRAILING:5 MINLEN:25
+fi
+
+check_file_valid() {
+  local file=$1
+  if [[ ! -f "${file}" ]]; then
+    echo "❌ ERROR: Expected file not found: ${file}"
+    exit 1
+  fi
+  if [[ ! -s "${file}" ]]; then
+    echo "❌ ERROR: File is empty: ${file}"
+    exit 1
+  fi
+  if ! gzip -t "${file}" &>/dev/null; then
+    echo "❌ ERROR: File is corrupted or not a valid gzip: ${file}"
+    exit 1
+  fi
+}
+
+if [[ "${layout}" == "single" ]]; then
+  check_file_valid "${trimmed_dir}/${library_id}_trimmed.fastq.gz"
+elif [[ "${layout}" == "paired" ]]; then
+  check_file_valid "${trimmed_dir}/${library_id}_trimmed_R1.fastq.gz"
+  check_file_valid "${trimmed_dir}/${library_id}_trimmed_R2.fastq.gz"
 fi
 
 echo "✅ Completed trimming for $library_id"

@@ -8,6 +8,7 @@
 ############################################################################################################
 
 set -euo pipefail
+trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # ----------------------------------------
 # Project Metadata
@@ -22,7 +23,7 @@ user=$(whoami)                   # User ID (Automatically pull username on Gadi)
 # ----------------------------------------
 
 job_name="trim_reads"            # Base name for PBS jobs
-ncpus=12                          # Total CPUs requested for a PBS job (more for trimming)
+ncpus=12                          # Total CPUs requested for a PBS job
 ncpus_per_task=6                 # CPUs each individual task should use (must divide evenly into ncpus)
 mem="30GB"                       # Total memory requested for the job
 walltime="04:00:00"              # Maximum allowed walltime for the PBS job
@@ -65,7 +66,7 @@ show_help() {
   echo -e "\033[1;34mOptions:\033[0m"
   echo "  -j    Job name [default: ${job_name}]"
   echo "  -c    Number of CPUs [default: ${ncpus}]"
-  echo "  -m    Memory per job [default: ${mem}GB]"
+  echo "  -m    Memory per job [default: ${mem}]"
   echo "  -k    Number of CPUs per individual task [default: ${ncpus_per_task}]"
   echo "  -t    Walltime [default: ${walltime}]"
   echo "  -q    PBS queue [default: ${queue}]"
