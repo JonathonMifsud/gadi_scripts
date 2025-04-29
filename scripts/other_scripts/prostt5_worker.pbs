@@ -1,0 +1,53 @@
+#!/bin/bash
+#PBS -l wd
+
+################################################################################
+# Script Name: prostt5_worker.pbs
+# Author: JCO Mifsud
+# Description: Worker script that runs ProstT5 AA2fold prediction on Gadi nodes.
+# GitHub: https://github.com/JonathonMifsud/gadi_scripts
+################################################################################
+
+set -euo pipefail
+trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
+
+# ----------------------------------------
+# Load Required Modules
+# ----------------------------------------
+
+module load python3/3.10.4 || { echo "❌ ERROR: Failed to load python3/3.10.4 module"; exit 1; }
+module load pytorch/1.10.0 || { echo "❌ ERROR: Failed to load pytorch/1.10.0 module"; exit 1; }
+
+# ----------------------------------------
+# Activate Virtual Environment
+# ----------------------------------------
+
+if [[ ! -d "${VENV_PATH}" ]]; then
+  echo "❌ ERROR: Virtual environment not found at ${VENV_PATH}"
+  exit 1
+fi
+
+source "${VENV_PATH}/bin/activate"
+
+# ----------------------------------------
+# Check Transformers Installation
+# ----------------------------------------
+
+if ! python3 -c "import transformers" &>/dev/null; then
+  echo "❌ ERROR: transformers not installed in virtualenv."
+  exit 1
+fi
+
+# ----------------------------------------
+# Run ProstT5 Prediction
+# ----------------------------------------
+
+echo "[INFO] Starting ProstT5 prediction..."
+
+python3 "${SCRIPT_PATH}" \
+    -i "${INPUT_FASTA}" \
+    -o "${OUTPUT_FASTA}" \
+    --device "${DEVICE}" \
+    --progress-every 10
+
+echo "[INFO] ProstT5 prediction completed successfully."
