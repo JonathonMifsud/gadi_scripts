@@ -23,7 +23,7 @@
 # 3. ProstT5 Model Files:
 #    - ProstT5 model files were downloaded manually from Huggingface:
 #      https://huggingface.co/Rostlab/ProstT5
-#    - Stored locally under: /g/data/fo27/models/prost5/
+#    - Stored locally under: /g/data/fo27/models/prostT5/
 #    - No internet access required during jobs; models are loaded from local folder.
 #
 # 4. GPU Resource Requirements:

@@ -44,7 +44,7 @@ def main(args):
     print(f"[INFO] Loaded {len(sequences)} sequences.")
 
     # Step 2: Load ProstT5 model from local path
-    model_dir = "/g/data/fo27/models/prost5/"
+    model_dir = "/g/data/fo27/models/prostT5/"
     print(f"[INFO] Loading ProstT5 model from {model_dir}...")
     try:
         tokenizer = T5Tokenizer.from_pretrained(model_dir, do_lower_case=False)
