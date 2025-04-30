@@ -31,6 +31,9 @@ def write_fasta(file_path, sequences):
         for seq_id, prediction in sequences.items():
             f.write(f">{seq_id}\n{prediction}\n")
 
+def split_into_chunks(seq, chunk_size):
+    return [seq[i:i+chunk_size] for i in range(0, len(seq), chunk_size)]
+
 def main(args):
     # Fix OpenMP conflicts (important for Gadi)
     os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -64,22 +67,51 @@ def main(args):
             print(f"\n[SEQ {idx}/{len(sequences)}] Processing: {seq_id}")
 
             clean_seq = re.sub(r"[UZOB]", "X", seq.upper())
-            model_input = "<AA2fold> " + " ".join(list(clean_seq))
+            prediction = ""
 
-            inputs = tokenizer(model_input, return_tensors="pt").to(device)
+            if args.chunk_threshold > 0 and len(clean_seq) > args.chunk_threshold:
+                print(f"[SEQ {idx}] ⚠️ Sequence longer than {args.chunk_threshold} residues — splitting into chunks...")
+                chunks = split_into_chunks(clean_seq, args.chunk_threshold)
+                stitched = ""
 
-            with torch.no_grad():
-                output_ids = model.generate(
-                    inputs.input_ids,
-                    attention_mask=inputs.attention_mask,
-                    do_sample=False,
-                    min_length=len(clean_seq),
-                    max_length=len(clean_seq) + 10
-                )
+                for ci, chunk in enumerate(chunks):
+                    print(f"[SEQ {idx}]   Chunk {ci+1}/{len(chunks)} (len={len(chunk)})")
+                    model_input = "<AA2fold> " + " ".join(list(chunk))
+                    inputs = tokenizer(model_input, return_tensors="pt").to(device)
 
-            prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).replace(" ", "")
+                    with torch.no_grad():
+                        output_ids = model.generate(
+                            inputs.input_ids,
+                            attention_mask=inputs.attention_mask,
+                            do_sample=False,
+                            min_length=len(chunk),
+                            max_length=len(chunk) + 10
+                        )
+
+                    sub_prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).replace(" ", "")
+                    stitched += sub_prediction
+
+                prediction = stitched
+                print(f"[SEQ {idx}] Chunked prediction complete. Final stitched length: {len(prediction)}")
+                print(f"[WARN] ⚠️ {seq_id} exceeded {args.chunk_threshold} residues and was chunk-processed. Accuracy may be affected.")
+
+            else:
+                model_input = "<AA2fold> " + " ".join(list(clean_seq))
+                inputs = tokenizer(model_input, return_tensors="pt").to(device)
+
+                with torch.no_grad():
+                    output_ids = model.generate(
+                        inputs.input_ids,
+                        attention_mask=inputs.attention_mask,
+                        do_sample=False,
+                        min_length=len(clean_seq),
+                        max_length=len(clean_seq) + 10
+                    )
+
+                prediction = tokenizer.decode(output_ids[0], skip_special_tokens=True).replace(" ", "")
+                print(f"[SEQ {idx}] Prediction complete. Output length: {len(prediction)}")
+
             processed_sequences[seq_id] = prediction
-            print(f"[SEQ {idx}] Prediction complete. Output length: {len(prediction)}")
 
         except Exception as e:
             print(f"[ERROR] Failed to process {seq_id}: {e}")
@@ -104,5 +136,6 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", required=True, help="Output FASTA file")
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"], help="Device to run on (cpu or cuda)")
     parser.add_argument("--progress-every", type=int, default=10, help="Progress report interval (in sequences)")
+    parser.add_argument("--chunk-threshold", type=int, default=500, help="Max sequence length before chunking is triggered. Use 0 to disable chunking.")
     args = parser.parse_args()
     main(args)

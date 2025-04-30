@@ -60,6 +60,7 @@ job_name="prostt5_predict"
 root_project="fo27"
 project="mytest"
 storage="gdata/${root_project}+scratch/${root_project}"
+chunk_threshold=500
 user=$(whoami)
 
 base_dir="/scratch/${root_project}/${user}/${project}"
@@ -103,6 +104,7 @@ show_help() {
   echo "  -q    Queue to submit to (default depends on device)"
   echo "  -p    NCI project code [default: ${root_project}]"
   echo "  -d    Device to use (cpu or cuda) [default: ${device}]"
+  echo "  -x    Chunk threshold [default: $chunk_threshold, 0 disables chunking]"
   echo "  -h    Show this help message and exit"
   echo ""
   exit 1
@@ -113,7 +115,7 @@ show_help() {
 # ----------------------------------------
 
 OPTIND=1
-while getopts "i:o:j:c:m:t:q:p:d:h" opt; do
+while getopts "i:o:j:c:m:t:q:p:d:x:h" opt; do
   case $opt in
     i) input_fasta="$OPTARG" ;;
     o) output_fasta="$OPTARG" ;;
@@ -124,6 +126,7 @@ while getopts "i:o:j:c:m:t:q:p:d:h" opt; do
     q) queue="$OPTARG" ;;
     p) root_project="$OPTARG"; storage="gdata/${root_project}+scratch/${root_project}" ;;
     d) device="$OPTARG" ;;
+    x) chunk_threshold="$OPTARG" ;;
     h|*) show_help ;;
   esac
 done
@@ -195,7 +198,7 @@ qsub -N "$job_name" \
      -e "${log_dir}/${job_name}_${log_date}.err" \
      -q "${queue}" -P "${root_project}" \
      ${pbs_resources} \
-     -v INPUT_FASTA="${input_fasta}",OUTPUT_FASTA="${output_fasta}",DEVICE="${device}",PROJECT="${project}",SCRIPT_PATH="${python_script}" \
+     -v INPUT_FASTA="${input_fasta}",OUTPUT_FASTA="${output_fasta}",DEVICE="${device}",PROJECT="${project}",SCRIPT_PATH="${python_script}",CHUNK_THRESHOLD="${chunk_threshold}" \
      "${pbs_script}"
 
 echo -e "\033[32m✅ Submitted ProstT5 prediction job: ${job_name} to queue: ${queue}\033[0m"
