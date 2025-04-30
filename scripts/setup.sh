@@ -1,6 +1,9 @@
 #!/bin/bash
 # BatchArtemisSRAMiner (Gadi Setup)
 
+set -euo pipefail
+trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
+
 ########################################
 # 🔧 USER-DEFINED SECTION – EDIT THIS: #
 ########################################
@@ -24,7 +27,7 @@ email=""
 scratch_base="/scratch/${root_project}/${user}/${project}"
 
 echo "Creating project directories under ${scratch_base} ..."
-mkdir -p "${scratch_base}"/{scripts,accession_lists,adapters,logs,environments,ccmetagen,blast_results,annotation,mapping,fastqc,read_count}
+mkdir -p "${scratch_base}"/{scripts,accession_lists,adapters,logs,environments,multiqc,kraken,blast_results,mapping,fastqc,read_count}
 mkdir -p "${scratch_base}"/contigs/{final_logs,final_contigs}
 mkdir -p "${scratch_base}"/abundance/final_abundance
 mkdir -p "${scratch_base}"/raw_reads "${scratch_base}"/trimmed_reads
