@@ -1,0 +1,51 @@
+#!/bin/bash
+# build_rdrp_dmnd_db.pbs
+# Description: PBS script to clone RdRp-scan and build a DIAMOND db.
+# Logs are written to /g/data/fo27/databases/logs/.
+
+#PBS -N build_rdrp_dmnd
+#PBS -l ncpus=1
+#PBS -l mem=8GB
+#PBS -l walltime=00:30:00
+#PBS -q copyq
+#PBS -l storage=gdata/fo27+scratch/fo27
+#PBS -P fo27
+#PBS -o /g/data/fo27/databases/logs/build_rdrp_dmnd.out
+#PBS -e /g/data/fo27/databases/logs/build_rdrp_dmnd.err
+#PBS -j oe
+
+set -euo pipefail
+trap 'echo "ERROR at line $LINENO" >&2' ERR
+
+export PATH="/g/data/fo27/software/singularity/bin:$PATH"
+
+echo "Changing to database directory..."
+cd /g/data/fo27/databases/blast/
+
+echo "Cloning RdRp-scan from GitHub (if not already present)..."
+if [[ ! -d RdRp-scan ]]; then
+  git clone "https://github.com/JustineCharon/RdRp-scan.git"
+else
+  echo "Directory 'RdRp-scan' already exists, skipping clone."
+fi
+
+cd RdRp-scan/
+
+echo "Removing old DIAMOND database if it exists..."
+rm -f RdRp-scan_0.90.dmnd*
+
+echo "Building DIAMOND database..."
+run_diamond.sh diamond makedb --in RdRp-scan_db.faa -d RdRp-scan_0.90.dmnd
+
+echo "Verifying DIAMOND database output..."
+if [[ ! -f RdRp-scan_0.90.dmnd.dmnd ]]; then
+  echo "ERROR: DIAMOND database file not created."
+  exit 1
+fi
+
+if [[ ! -s RdRp-scan_0.90.dmnd.dmnd ]]; then
+  echo "ERROR: DIAMOND database file is empty."
+  exit 1
+fi
+
+echo "DIAMOND database successfully created: RdRp-scan_0.90.dmnd.dmnd"
