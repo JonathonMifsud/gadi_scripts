@@ -22,20 +22,33 @@ fi
 root_project="${ROOT_PROJECT}"
 project="${PROJECT_NAME}"
 user=$(whoami)
-CPU="${NCPUS_PER_TASK:-6}"
+CPU="${NCPUS_PER_TASK}"
 log_date=$(date +%Y%m%d)
 jobname="${PBS_JOBNAME:-manual_blastx}"
-
-# --- Default RdRp DB path (can be overridden via -d in the run script) ---
 rdrp_db="${RDRP_DB:-/g/data/fo27/databases/blast/RdRp-scan/RdRp-scan_0.90.dmnd}"
 
-# --- Input Check ---
+# --- Input check ---
 if [[ $# -lt 1 ]]; then
-  echo "❌ ERROR: No input contig file provided to $0."
+  echo "❌ ERROR: No library ID provided to $0."
   exit 1
 fi
 
-input_file="$1"
+library_id="$1"
+base_dir="/scratch/${root_project}/${user}/${project}"
+contig_dir="${base_dir}/contigs/final_contigs"
+output_dir="${base_dir}/blast_results"
+log_dir="${base_dir}/logs"
+input_file="${contig_dir}/${library_id}.contigs.fa"
+tempdir="${base_dir}/diamond_tmp_${library_id}_$RANDOM"
+export PATH="/g/data/fo27/software/singularity/bin:$PATH"
+
+mkdir -p "$log_dir" "$output_dir" "$tempdir"
+cd "$output_dir" || exit 1
+
+log_file="${log_dir}/${jobname}_${log_date}_${library_id}.log"
+exec > "$log_file" 2>&1
+
+# --- Validate inputs ---
 if [[ ! -f "$input_file" ]]; then
   echo "❌ ERROR: Contig file not found: $input_file"
   exit 1
@@ -46,43 +59,28 @@ if [[ ! -f "$rdrp_db" ]]; then
   exit 1
 fi
 
-library_id=$(basename "$input_file" | sed 's/\.contigs\.fa$//')
-
-# --- Define Paths ---
-base_dir="/scratch/${root_project}/${user}/${project}"
-output_dir="${base_dir}/blast_results"
-log_dir="${base_dir}/logs"
-tempdir="${base_dir}/diamond_tmp_${library_id}_$RANDOM"
-export PATH="/g/data/fo27/software/singularity/bin:$PATH"
-
-mkdir -p "${output_dir}" "${log_dir}" "${tempdir}"
-cd "${output_dir}" || exit 1
-
-log_file="${log_dir}/${jobname}_${log_date}_${library_id}.log"
-exec > "${log_file}" 2>&1
-
 echo "🔹 Running DIAMOND blastx on ${library_id}"
 
 # --- Run DIAMOND ---
 run_diamond.sh diamond blastx \
-  -q "${input_file}" \
-  -d "${rdrp_db}" \
-  -t "${tempdir}" \
+  -q "$input_file" \
+  -d "$rdrp_db" \
+  -t "$tempdir" \
   -o "${output_dir}/${library_id}_rdrp_blastx_results.txt" \
-  -e 1E-4 -c2 -k 3 -b 2 -p "${CPU}" \
+  -e 1E-4 -c2 -k 3 -b 2 -p "$CPU" \
   -f 6 qseqid qlen sseqid stitle pident length evalue \
   --ultra-sensitive
 
-# --- Check DIAMOND result ---
+# --- Validate output ---
 blast_out="${output_dir}/${library_id}_rdrp_blastx_results.txt"
 
 if [[ ! -f "$blast_out" ]]; then
-  echo "❌ ERROR: Expected DIAMOND output file not found: $blast_out"
+  echo "❌ ERROR: DIAMOND output file not found: $blast_out"
   exit 1
 fi
 
 if [[ ! -s "$blast_out" ]]; then
-  echo "⚠️ WARNING: DIAMOND output file is empty — likely no hits for $library_id"
+  echo "⚠️ WARNING: Output is empty — likely no hits for $library_id"
   echo "⚠️ Skipping contig extraction step."
   rm -rf "$tempdir"
   exit 0
@@ -92,7 +90,7 @@ fi
 grep -i ".*" "$blast_out" \
   | cut -f1 | sort | uniq > "${output_dir}/${library_id}_temp_contig_names.txt"
 
-grep -A1 -Ff "${output_dir}/${library_id}_temp_contig_names.txt" "${input_file}" \
+grep -A1 -Ff "${output_dir}/${library_id}_temp_contig_names.txt" "$input_file" \
   | sed '/--/d' | sed '/^[[:space:]]*$/d' \
   | sed --posix -i "/^\>/ s/$/"_$library_id"/" > "${output_dir}/${library_id}_rdrp_blastcontigs.fasta"
 

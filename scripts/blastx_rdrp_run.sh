@@ -3,7 +3,7 @@
 ############################################################################################################
 # Script Name: blastx_rdrp_run.sh
 # Author: JCO Mifsud jonathon.mifsud1@gmail.com
-# Description: Launches DIAMOND blastx jobs against the RdRp database
+# Description: Launches DIAMOND blastx jobs against the RdRp database using nci-parallel and PBS on Gadi.
 # Please remember to cite Justine's database paper! https://academic.oup.com/ve/article-abstract/8/2/veac082/6679729
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
@@ -12,66 +12,71 @@ set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # ----------------------------------------
-# Default Configuration
+# Project Metadata
 # ----------------------------------------
-project="mytest"
-root_project="fo27"
-user=$(whoami)
 
-job_name="blastx_rdrp"
-ncpus=12
-ncpus_per_task=6
-mem="30GB"
-walltime="06:00:00"
-num_jobs=1
-queue="normal"
-storage="gdata/${root_project}+scratch/${root_project}"
-
-# Default RdRp DB path (can be overridden with -d option)
-rdrp_db="/g/data/fo27/databases/blast/RdRp-scan/RdRp-scan_0.90.dmnd"
+project="mytest"                 # Project name for organizational purposes (under /scratch)
+root_project="fo27"              # Gadi NCI project code (PBS -P flag)
+user=$(whoami)                   # User ID (Automatically pulled from system)
 
 # ----------------------------------------
-# Directory Setup
+# Job Configuration (PBS settings)
 # ----------------------------------------
-base_dir="/scratch/${root_project}/${user}/${project}"
-input_base="${base_dir}/contigs/final_contigs"
-script_dir="${base_dir}/scripts"
-log_dir="${base_dir}/logs"
+
+job_name="blastx_rdrp"           # Base name for PBS jobs
+ncpus=12                         # Total CPUs requested for a PBS job
+ncpus_per_task=6                 # CPUs per individual task
+mem="30GB"                       # Memory per PBS job
+walltime="04:00:00"              # Max walltime
+num_jobs=1                       # Number of PBS jobs to split input into
+queue="normal"                   # PBS queue
+storage="gdata/${root_project}+scratch/${root_project}" # PBS storage
+
+# ----------------------------------------
+# Paths
+# ----------------------------------------
+
+script_dir="/scratch/${root_project}/${user}/${project}/scripts"
+input_base="/scratch/${root_project}/${user}/${project}/accession_lists"
+log_dir="/scratch/${root_project}/${user}/${project}/logs"
 task_script="${script_dir}/blastx_rdrp_worker.sh"
-output_dir="${base_dir}/blast_results"
 
-mkdir -p "$log_dir" "$output_dir"
+# Default RdRp DB (can be overridden)
+rdrp_db="/g/data/fo27/databases/blast/RdRp-scan/RdRp-scan_0.90.dmnd"
 
 # ----------------------------------------
 # Help Functions
 # ----------------------------------------
+
 brief_help() {
-  echo -e "\n\033[1;34mUsage:\033[0m $0 -f accession_list.txt [options]"
-  echo -e "\nFor full help, use: \033[1m$0 -h\033[0m"
+  echo -e "\n\033[1;34mUsage:\033[0m $0 -f /scratch/${root_project}/${user}/${project}/accession_lists/setone.txt [options]"
+  echo -e "For full help, use: \033[1m$0 -h\033[0m"
 }
 
 show_help() {
   echo -e "\n\033[1;34mUsage:\033[0m"
   echo "  $0 -f accession_list.txt [options]"
   echo -e ""
-  echo "This script launches DIAMOND blastx jobs against the RdRp database"
-  echo -e "\n\033[1;34mRequired:\033[0m"
-  echo "  -f    Path to input list of contig FASTA files (one per line)."
-  echo -e "\n\033[1;34mOptions:\033[0m"
-  echo "  -d    Path to RdRp DIAMOND database [default: ${rdrp_db}]"
+  echo "This script launches DIAMOND blastx jobs against the RdRp database using PBS on Gadi."
+  echo -e ""
+  echo -e "\033[1;34mRequired:\033[0m"
+  echo "  -f    Accession list file (one ID per line)"
+  echo -e ""
+  echo -e "\033[1;34mOptions:\033[0m"
+  echo "  -d    Path to RdRp DIAMOND database [default: $rdrp_db]"
   echo "  -j    Job name [default: ${job_name}]"
-  echo "  -c    Number of CPUs per PBS job [default: ${ncpus}]"
-  echo "  -m    Memory per PBS job [default: ${mem}]"
-  echo "  -k    Number of CPUs per task [default: ${ncpus_per_task}]"
+  echo "  -c    Total CPUs [default: ${ncpus}]"
+  echo "  -k    CPUs per task [default: ${ncpus_per_task}]"
+  echo "  -m    Memory per job [default: ${mem}]"
   echo "  -t    Walltime [default: ${walltime}]"
   echo "  -q    PBS queue [default: ${queue}]"
   echo "  -p    NCI project code [default: ${root_project}]"
-  echo "  -r    Storage resources [default: ${storage}]"
-  echo "  -n    Number of parallel PBS jobs [default: ${num_jobs}]"
-  echo "  -h    Show help message"
+  echo "  -r    Storage resource [default: ${storage}]"
+  echo "  -n    Number of PBS jobs [default: ${num_jobs}]"
+  echo "  -h    Show this help message"
   echo -e ""
   echo -e "\033[1;34mExample:\033[0m"
-  echo -e "  $0 -f list.txt -d /path/to/custom.dmnd -n 4"
+  echo -e "  $0 -f setone -n 4"
   echo -e ""
   exit 1
 }
@@ -79,7 +84,8 @@ show_help() {
 # ----------------------------------------
 # Argument Parsing
 # ----------------------------------------
-while getopts "f:j:c:m:k:t:q:p:r:n:d:h" opt; do
+
+while getopts "f:j:c:k:m:t:q:p:r:n:d:h" opt; do
   case $opt in
     f)
       if [[ "$OPTARG" = /* ]]; then
@@ -90,8 +96,8 @@ while getopts "f:j:c:m:k:t:q:p:r:n:d:h" opt; do
       ;;
     j) job_name="$OPTARG" ;;
     c) ncpus="$OPTARG" ;;
-    m) mem="$OPTARG" ;;
     k) ncpus_per_task="$OPTARG" ;;
+    m) mem="$OPTARG" ;;
     t) walltime="$OPTARG" ;;
     q) queue="$OPTARG" ;;
     p) root_project="$OPTARG" ;;
@@ -105,25 +111,15 @@ done
 # ----------------------------------------
 # Validation
 # ----------------------------------------
+
 if [[ $# -eq 0 ]]; then
   echo -e "\033[1;31m❌ ERROR:\033[0m No arguments provided."
   brief_help
   exit 1
 fi
 
-if [[ -z "${input_list:-}" ]]; then
-  echo -e "\033[1;31m❌ ERROR:\033[0m Missing required -f argument."
-  brief_help
-  exit 1
-fi
-
-if [[ ! -f "$input_list" ]]; then
-  echo -e "\033[1;31m❌ ERROR:\033[0m Input list not found: $input_list"
-  exit 1
-fi
-
-if [[ ! -f "$rdrp_db" ]]; then
-  echo -e "\033[1;31m❌ ERROR:\033[0m RdRp database not found: $rdrp_db"
+if [[ -z "${input_list:-}" || ! -f "$input_list" ]]; then
+  echo -e "\033[1;31m❌ ERROR:\033[0m Accession list not found: $input_list"
   exit 1
 fi
 
@@ -132,20 +128,28 @@ if [[ ! -x "$task_script" ]]; then
   exit 1
 fi
 
+if [[ ! -f "$rdrp_db" ]]; then
+  echo -e "\033[1;31m❌ ERROR:\033[0m RdRp database not found: $rdrp_db"
+  exit 1
+fi
+
+mkdir -p "$log_dir"
 log_date=$(date +%Y%m%d)
 
 # --- Efficiency Check ---
 num_tasks=$(wc -l < "$input_list")
 effective_ncpus=$(( num_tasks * ncpus_per_task ))
+
 if (( effective_ncpus < ncpus )); then
-  echo -e "\033[1;33m⚠️ WARNING:\033[0m You requested $ncpus CPUs but only $effective_ncpus are used across $num_tasks tasks."
-  echo -e "\033[1;33m⚠️ Consider reducing -c to $effective_ncpus or increasing -k to use more per task.\033[0m"
+  echo -e "\033[1;33m⚠️ WARNING:\033[0m You requested $ncpus CPUs but only ${effective_ncpus} are used across $num_tasks tasks."
+  echo -e "\033[1;33m⚠️ Consider adjusting -c or -k to match task count.\033[0m"
   echo ""
 fi
 
 # ----------------------------------------
 # Submit PBS Jobs
 # ----------------------------------------
+
 if (( num_jobs == 1 )); then
   echo -e "\033[34m Submitting a single PBS job for full input list...\033[0m"
   chunk_jobname="${job_name}_single"
@@ -161,8 +165,8 @@ if (( num_jobs == 1 )); then
   echo -e "\033[32m✅ Launched single PBS job: $input_list\033[0m"
 
 else
-  echo -e "\033[34m Splitting input into $num_jobs chunks...\033[0m"
-  chunk_dir="${input_base}/chunks_${job_name}_${log_date}"
+  echo -e "\033[34m Splitting input list into $num_jobs chunks...\033[0m"
+  chunk_dir="${input_base}/chunks_$(basename "$input_list")_${job_name}_${log_date}"
   mkdir -p "$chunk_dir"
   split -d -n l/$num_jobs "$input_list" "$chunk_dir/chunk_"
 
@@ -181,5 +185,5 @@ else
     echo -e "\033[32m✅ Launched PBS job: $chunk_jobname for chunk: $chunk_file\033[0m"
   done
 
-  echo -e "\033[32m✅ Launched $num_jobs PBS jobs from: $chunk_dir\033[0m"
+  echo -e "\033[32m✅ All chunked jobs launched under: $chunk_dir\033[0m"
 fi
