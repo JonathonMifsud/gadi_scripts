@@ -1,0 +1,23 @@
+title: "FastQC Summary Report - ${PROJECT_NAME}"
+report_comment: "Includes raw, trimmed, and unpaired reads from the libraries in the input list."
+
+sample_names:
+  replace:
+    # Clean up read type suffixes
+    "_1.fastq.gz": " (raw R1)"
+    "_2.fastq.gz": " (raw R2)"
+    "_trimmed.fastq.gz": " (trimmed)"
+    "_trimmed_R1.fastq.gz": " (trimmed R1)"
+    "_trimmed_R2.fastq.gz": " (trimmed R2)"
+    "_unpaired.fastq.gz": " (unpaired)"
+    ".fastq.gz": ""   # Clean fallback
+
+sp:
+  save_data_files: true
+
+table_columns_visible:
+  FastQC:
+    percent_gc: True
+    percent_duplicates: True
+    total_sequences: True
+    filename: False
