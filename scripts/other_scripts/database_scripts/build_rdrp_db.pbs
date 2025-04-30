@@ -35,7 +35,7 @@ echo "Removing old DIAMOND database if it exists..."
 rm -f RdRp-scan_0.90.dmnd*
 
 echo "Building DIAMOND database..."
-run_diamond.sh diamond makedb --in RdRp-scan_db.faa -d RdRp-scan_0.90.dmnd
+run_diamond.sh diamond makedb --in RdRp-scan_0.90.fasta -d RdRp-scan_0.90.dmnd
 
 echo "Verifying DIAMOND database output..."
 if [[ ! -f RdRp-scan_0.90.dmnd.dmnd ]]; then
