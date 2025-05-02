@@ -1,0 +1,112 @@
+#!/bin/bash
+#PBS -P fo27
+#PBS -N RVDB_Build
+#PBS -q normal
+#PBS -l ncpus=8
+#PBS -l mem=60GB
+#PBS -l walltime=48:00:00
+#PBS -l storage=gdata/fo27+scratch/fo27
+#PBS -o /g/data/fo27/databases/logs/rvdb_build.out
+#PBS -e /g/data/fo27/databases/logs/rvdb_build.err
+
+set -euo pipefail
+trap 'echo "ERROR: Failed at line $LINENO." >&2' ERR
+
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
+db_root="/g/data/fo27/databases/blast/rvdb"
+build_flag_file="$db_root/next_build_version"
+final_version_file="$db_root/rvdb_current_version"
+map_script="/g/data/fo27/databases/scripts/rvdb_map_taxonomy.py"
+
+# ------------------------------------------------------------------------------
+# Software
+# ------------------------------------------------------------------------------
+module load python3/3.12.1
+export PATH="/g/data/fo27/software/singularity/bin:$PATH"
+
+# ------------------------------------------------------------------------------
+# Validations
+# ------------------------------------------------------------------------------
+echo "[INFO] Starting RVDB build job..."
+
+[[ -f "$build_flag_file" ]] || { echo "[ERROR] Build version file not found: $build_flag_file"; exit 1; }
+read -r rvdb_build_version < "$build_flag_file"
+[[ "$rvdb_build_version" =~ ^[0-9]+$ ]] || { echo "[ERROR] Invalid version number: $rvdb_build_version"; exit 1; }
+
+# ------------------------------------------------------------------------------
+# Locate paths
+# ------------------------------------------------------------------------------
+versioned_dir=$(find "$db_root" -maxdepth 1 -type d -name "RVDB.prot.v${rvdb_build_version}.*" | head -n 1)
+[[ -n "$versioned_dir" ]] || { echo "[ERROR] Could not find folder for RVDB v${rvdb_build_version}"; exit 1; }
+
+month_tag=$(date +%b-%Y)
+
+fasta_file="$versioned_dir/U-RVDBv${rvdb_build_version}.0-prot.${month_tag}.fasta"
+accession_file="$versioned_dir/prot.accession2taxid.${month_tag}"
+nodes_file="$versioned_dir/nodes.dmp"
+names_file="$versioned_dir/names.dmp"
+map_out="$versioned_dir/RVDB.prot.v${rvdb_build_version}.${month_tag}.accession2taxid.txt"
+db_out="$versioned_dir/RVDB.prot.v${rvdb_build_version}.${month_tag}.dmnd"
+
+for file in "$fasta_file" "$accession_file" "$nodes_file" "$names_file" "$map_script"; do
+    [[ -f "$file" ]] || { echo "[ERROR] Missing required file: $file"; exit 1; }
+done
+
+# ------------------------------------------------------------------------------
+# Step 1: Mapping
+# ------------------------------------------------------------------------------
+if [[ "${SKIP_MAPPING:-0}" -eq 1 ]]; then
+    echo "[INFO] Skipping taxonomy mapping (SKIP_MAPPING=1)."
+else
+    echo "[INFO] Running taxonomy mapping script..."
+    python3 "$map_script" "$accession_file" "$fasta_file"
+
+    found_table=$(find "$versioned_dir" -name "rvdb.accession2taxid.*.txt" | head -n 1)
+    if [[ -f "$found_table" ]]; then
+        mv "$found_table" "$map_out"
+        echo "[INFO] Mapping table written to: $map_out"
+    else
+        echo "[ERROR] Mapping output not found in $versioned_dir"
+        exit 1
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# Step 2: DIAMOND Build
+# ------------------------------------------------------------------------------
+if [[ "${SKIP_BUILD:-0}" -eq 1 ]]; then
+    echo "[INFO] Skipping DIAMOND makedb (SKIP_BUILD=1)."
+else
+    echo "[INFO] Building DIAMOND database..."
+    run_diamond.sh diamond makedb --in "$fasta_file" \
+      --db "${db_out%.dmnd}" \
+      --taxonmap "$map_out" \
+      --taxonnodes "$nodes_file" \
+      --taxonnames "$names_file" \
+      -t "$versioned_dir"
+    echo "[INFO] DIAMOND database build complete."
+fi
+
+# ------------------------------------------------------------------------------
+# Step 3: Verification
+# ------------------------------------------------------------------------------
+if [[ "${SKIP_VERIFY:-0}" -eq 1 ]]; then
+    echo "[INFO] Skipping DIAMOND dbinfo check (SKIP_VERIFY=1)."
+else
+    echo "[INFO] Verifying DIAMOND database..."
+    run_diamond.sh diamond dbinfo --db "${db_out%.dmnd}" || {
+        echo "[ERROR] DIAMOND database validation failed"
+        exit 1
+    }
+    echo "[INFO] DIAMOND database validation passed."
+fi
+
+# ------------------------------------------------------------------------------
+# Finalize
+# ------------------------------------------------------------------------------
+echo "$rvdb_build_version" > "$final_version_file"
+rm -f "$build_flag_file"
+
+echo "[INFO] RVDB v${rvdb_build_version} build completed successfully in: $versioned_dir"
