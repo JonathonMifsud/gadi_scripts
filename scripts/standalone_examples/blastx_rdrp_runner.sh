@@ -21,6 +21,7 @@ user=$(whoami)                   # User ID (Automatically pulled from system)
 
 # Resources
 # This can all be set here, or using the -c, -k, -m, -t, -q, -p, -r flags when running the script.
+# These are the default values used if you don't specify them.
 ncpus=12                         # Total CPUs requested for a PBS job
 ncpus_per_task=6                 # CPUs per individual task
 mem="120GB"                       # Memory per PBS job

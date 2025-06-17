@@ -28,7 +28,6 @@ start_time=$(date)
 mkdir -p "$LOG_DIR"
 module load nci-parallel/1.0.0a
 
-# ------------------------ Derived and Default Values ------------------------
 ncpus_per_task="${NCPUS_PER_TASK:-1}"
 input_cmd_file="$PBS_JOBFS/parallel_cmds.txt"
 

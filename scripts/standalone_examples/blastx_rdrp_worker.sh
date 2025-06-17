@@ -11,6 +11,7 @@ set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # ------------------------ Manual Execution Warning ------------------------
+# Warning if the worker script is run manually outside of a PBS job
 if [[ -z "${PBS_JOBID:-}" ]]; then
   echo "⚠️ WARNING: It looks like you are manually executing this worker script."
   echo "Please use the run script instead (e.g., ./run_blastx_rdrp.sh) to submit jobs properly via PBS."
@@ -21,7 +22,7 @@ fi
 # to add to the logs to prevent overwriting
 log_date=$(date +%Y%m%d)
 
-# Variables provided by the runner script
+# Variables provided by the runner script through the launcher script
 CPU="${NCPUS_PER_TASK}"
 jobname="${PBS_JOBNAME}"
 rdrp_db="${RDRP_DB}"
@@ -32,14 +33,16 @@ if [[ $# -lt 1 ]]; then
   exit 1
 fi
 
+# pull the library ID from the first argument
 library_id="$1"
+# create the contig input file path
 input_file="${INPUT_DIR}/${library_id}.contigs.fa"
 tempdir="${OUTPUT_DIR}/tmp/diamond_tmp_${library_id}_$RANDOM"
 
-# Software path
+# Singularity software path
 export PATH="/g/data/fo27/software/singularity/bin:$PATH"
 
-# Logging setup
+# Making directory structure for logs and outputs
 mkdir -p "$LOG_DIR" "$OUTPUT_DIR" "$tempdir"
 cd "$OUTPUT_DIR" || exit 1
 log_file="${LOG_DIR}/${jobname}_${log_date}_${library_id}.log"
@@ -67,8 +70,6 @@ run_diamond.sh diamond blastx \
   -e 1E-4 -c2 -k 3 -b 2 -p "$CPU" \
   -f 6 qseqid qlen sseqid stitle pident length evalue \
   --ultra-sensitive
-
-
 # ------------------------ Post-Processing and Validation ------------------------
 blast_out="${OUTPUT_DIR}/${library_id}_rdrp_blastx_results.txt"
 
