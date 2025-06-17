@@ -9,6 +9,8 @@
 set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
+# NEED TO ADD THE NEWER PARALLEL OPTIONS (-k and -n) 
+
 # ----------------------------------------
 # Project Metadata
 # ----------------------------------------

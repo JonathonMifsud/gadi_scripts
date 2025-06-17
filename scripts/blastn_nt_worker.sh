@@ -6,6 +6,8 @@
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
 
+# NEED TO ADD THE NEWER PARALLEL OPTIONS (-k and -n) 
+
 set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
