@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: trim_reads_worker.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Worker script to trim reads using Trimmomatic on Gadi HPC system.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################

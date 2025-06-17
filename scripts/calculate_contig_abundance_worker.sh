@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: abundance_reads_worker.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Worker script to estimate abundance using RSEM on Gadi HPC system.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################

@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: blastx_rdrp_worker.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Worker script to run DIAMOND blastx against the RdRp database using a Singularity wrapper.
 # Please remember to cite Justine's database paper! https://academic.oup.com/ve/article-abstract/8/2/veac082/6679729
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
@@ -39,7 +38,8 @@ contig_dir="${base_dir}/contigs/final_contigs"
 output_dir="${base_dir}/blast_results"
 log_dir="${base_dir}/logs"
 input_file="${contig_dir}/${library_id}.contigs.fa"
-tempdir="${base_dir}/diamond_tmp_${library_id}_$RANDOM"
+tempdir="${base_dir}/tmp/diamond_tmp_${library_id}_$RANDOM"
+
 export PATH="/g/data/fo27/software/singularity/bin:$PATH"
 
 mkdir -p "$log_dir" "$output_dir" "$tempdir"
@@ -92,7 +92,7 @@ grep -i ".*" "$blast_out" \
 
 grep -A1 -Ff "${output_dir}/${library_id}_temp_contig_names.txt" "$input_file" \
   | sed '/--/d' | sed '/^[[:space:]]*$/d' \
-  | sed --posix -i "/^\>/ s/$/"_$library_id"/" > "${output_dir}/${library_id}_rdrp_blastcontigs.fasta"
+  | sed "/^\>/ s/$/_${library_id}/" > "${output_dir}/${library_id}_rdrp_blastcontigs.fasta"
 
 rm -rf "$tempdir" "${output_dir}/${library_id}_temp_contig_names.txt"
 

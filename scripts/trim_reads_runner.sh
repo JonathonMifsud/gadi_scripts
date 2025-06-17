@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: trim_reads_run.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Launches a parallel trimming job using nci-parallel and PBS on Gadi.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
@@ -70,18 +69,18 @@ show_help() {
   echo "  -k    Number of CPUs per individual task [default: ${ncpus_per_task}]"
   echo "  -t    Walltime [default: ${walltime}]"
   echo "  -q    PBS queue [default: ${queue}]"
-  echo "  -p    NCI project code [default: {$root_project}]"
-  echo "  -r    Storage resources [default: gdata/{$root_project}+scratch/{$root_project}]"
+  echo "  -p    NCI project code [default: ${root_project}]"
+  echo "  -r    Storage resources [default: gdata/${root_project}+scratch/${root_project}]"
   echo "  -n    Number of parallel jobs to run [default: ${num_jobs}]"
   echo "  -h    Show this help message"
   echo -e ""
 
   echo -e "\033[1;34mExample:\033[0m"
   echo -e "\033[32m  Submit a single PBS job:\033[0m"
-  echo -e "    $0 -f /scratch/{$root_project}/${user}/${project}/accession_lists/setone"
+  echo -e "    $0 -f /scratch/${root_project}/${user}/${project}/accession_lists/setone"
   echo -e ""
   echo -e "\033[32m  Submit multiple PBS jobs in parallel (split into 4 chunks):\033[0m"
-  echo -e "    $0 -f /scratch/{$root_project}/${user}/${project}/accession_lists/setone -n 4"
+  echo -e "    $0 -f /scratch/${root_project}/${user}/${project}/accession_lists/setone -n 4"
   echo -e ""
 
   echo -e "\033[1;33mNotes:\033[0m"
@@ -151,6 +150,73 @@ fi
 mkdir -p "$log_dir"
 log_date=$(date +%Y%m%d)
 
+detect_layout_and_validate() {
+  local id="$1"
+  local raw_dir="/scratch/${root_project}/${user}/${project}/raw_reads"
+  local layout="unknown"
+
+  if [[ -f "${raw_dir}/${id}.fastq.gz" && ! -f "${raw_dir}/${id}_1.fastq.gz" ]]; then
+    layout="single"
+  elif [[ -f "${raw_dir}/${id}_1.fastq.gz" ]]; then
+    layout="paired"
+  fi
+
+  if [[ "${layout}" == "unknown" ]]; then
+    echo -e "\033[1;31m❌ ERROR:\033[0m Could not detect layout for ${id} in ${raw_dir}"
+    return 1
+  fi
+
+  check_file_valid() {
+    local f=$1
+    if [[ ! -f "$f" ]]; then
+      echo -e "\033[1;31m❌ ERROR:\033[0m Missing file: $f"
+      return 1
+    fi
+    if [[ ! -s "$f" ]]; then
+      echo -e "\033[1;31m❌ ERROR:\033[0m Empty file: $f"
+      return 1
+    fi
+    if ! gzip -t "$f" &>/dev/null; then
+      echo -e "\033[1;31m❌ ERROR:\033[0m Corrupted or invalid gzip: $f"
+      return 1
+    fi
+  }
+
+  if [[ "$layout" == "single" ]]; then
+    check_file_valid "${raw_dir}/${id}.fastq.gz" || return 1
+  elif [[ "$layout" == "paired" ]]; then
+    check_file_valid "${raw_dir}/${id}_1.fastq.gz" || return 1
+    check_file_valid "${raw_dir}/${id}_2.fastq.gz" || return 1
+  fi
+
+  echo -e "\033[32m✔ Valid layout (${layout}) and files detected for: ${id}\033[0m"
+}
+
+echo -e "\n🔍 Validating raw read files for all ${num_tasks} accessions..."
+
+while IFS= read -r accession; do
+  accession=$(echo "$accession" | xargs)  # Trim whitespace
+  [[ -z "$accession" ]] && continue
+  detect_layout_and_validate "$accession" || {
+    echo -e "\n\033[1;31m❌ Aborting: Invalid input files detected for accession: $accession\033[0m"
+    exit 1
+  }
+done < "$input_list"
+
+echo -e "\n\033[32m✅ All accessions passed raw read file validation.\033[0m"
+
+adapter_single="/scratch/${root_project}/${user}/${project}/adapters/TruSeq3-SE.fa"
+adapter_paired="/scratch/${root_project}/${user}/${project}/adapters/joint_TruSeq3_Nextera-PE.fa"
+
+for adapter_file in "$adapter_single" "$adapter_paired"; do
+  if [[ ! -f "$adapter_file" ]]; then
+    echo -e "\033[1;31m❌ ERROR:\033[0m Adapter file missing: $adapter_file"
+    exit 1
+  fi
+done
+
+echo -e "\033[32m✔ Adapter files found.\033[0m"
+
 # --- Efficiency Check ---
 num_tasks=$(wc -l < "$input_list")
 effective_ncpus=$(( num_tasks * ncpus_per_task ))
@@ -203,3 +269,40 @@ else
 
   echo -e "\033[32m Launched $num_jobs PBS jobs from chunks under: $chunk_dir\033[0m"
 fi
+
+# --- Calculate estimated per-task timeout ---
+IFS=: read -r hh mm ss <<< "$walltime"
+total_walltime_secs=$((10#$hh * 3600 + 10#$mm * 60 + 10#$ss))
+num_ranks=$(( ncpus / ncpus_per_task ))
+
+# Full list estimation
+num_waves_full=$(( (num_tasks + num_ranks - 1) / num_ranks ))
+timeout_full=$(( total_walltime_secs * 95 / 100 / num_waves_full ))
+timeout_full_fmt=$(printf '%02d:%02d:%02d' $((timeout_full / 3600)) $(( (timeout_full % 3600) / 60 )) $((timeout_full % 60)))
+
+# Estimate timeout per chunk (if split into multiple jobs)
+avg_chunk_tasks=$(( (num_tasks + num_jobs - 1) / num_jobs ))
+waves_per_chunk=$(( (avg_chunk_tasks + num_ranks - 1) / num_ranks ))
+timeout_chunk=$(( total_walltime_secs * 95 / 100 / waves_per_chunk ))
+timeout_chunk_fmt=$(printf '%02d:%02d:%02d' $((timeout_chunk / 3600)) $(( (timeout_chunk % 3600) / 60 )) $((timeout_chunk % 60)))
+
+# --- Final Job Configuration Summary ---
+echo -e "\nPBS Job Configuration Summary:"
+printf "   Accession tasks total:        %s\n" "$num_tasks"
+printf "   Parallel MPI ranks:           %s (ncpus / ncpus_per_task)\n" "$num_ranks"
+printf "   Total CPUs per job:           %s\n" "$ncpus"
+printf "   CPUs per task:                %s\n" "$ncpus_per_task"
+printf "   Memory per job:               %s\n" "$mem"
+printf "   Walltime per job:             %s\n" "$walltime"
+printf "   Number of PBS jobs:           %s\n" "$num_jobs"
+if (( num_jobs == 1 )); then
+  printf "   Estimated task waves:         %s (tasks ÷ ranks)\n" "$num_waves_full"
+  printf "   Timeout per task:             %s seconds (~%s)\n" "$timeout_full" "$timeout_full_fmt"
+else
+  printf "   Estimated avg tasks/chunk:    %s\n" "$avg_chunk_tasks"
+  printf "   Estimated task waves/chunk:   %s\n" "$waves_per_chunk"
+  printf "   Timeout per task (per chunk): %s seconds (~%s)\n" "$timeout_chunk" "$timeout_chunk_fmt"
+  echo ""
+  echo "Note: Each PBS job will calculate its own optimized timeout based on its chunk size."
+fi
+

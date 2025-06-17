@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: assemble_reads_worker.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Worker script to assemble reads using MEGAHIT on Gadi HPC system.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
@@ -84,21 +83,30 @@ elif [[ "${layout}" == "paired" ]]; then
 fi
 
 # --- Run Assembly ---
+# Remove previous MEGAHIT output if present
+if [[ -d "${contig_dir}/${library_id}_out" ]]; then
+  echo "⚠️ WARNING: Output directory already exists: ${contig_dir}/${library_id}_out"
+  echo "🧹 Removing old directory to avoid MEGAHIT failure..."
+  echo "For safety I don't use the continue option, if you want to try this remove the line below and add the continue option to the MEGAHIT command."
+  rm -rf "${contig_dir}/${library_id}_out"
+fi
+
 if [[ "${layout}" == "single" ]]; then
   echo "🔹 Single-end de novo assembly..."
   run_megahit.sh megahit --num-cpu-threads "${CPU}" \
             --memory 0.9 \
-            -r "${trimmed_dir}"/trimmed_reads/"${library_id}"_trimmed.fastq.gz \
-            -o "${contig_dir}"/"${library_id}"_out
+            -r "${trimmed_dir}/${library_id}_trimmed.fastq.gz" \
+            -o "${contig_dir}/${library_id}_out"
 
 elif [[ "${layout}" == "paired" ]]; then
   echo "🔹 Paired-end de novo assembly..."
   run_megahit.sh megahit --num-cpu-threads "${CPU}" \
             --memory 0.9 \
-            -1 "${trimmed_dir}"/"$library_id"_trimmed_R1.fastq.gz \
-            -2 "${trimmed_dir}"/"$library_id"_trimmed_R2.fastq.gz \
-            -o "${contig_dir}"/"${library_id}"_out
+            -1 "${trimmed_dir}/${library_id}_trimmed_R1.fastq.gz" \
+            -2 "${trimmed_dir}/${library_id}_trimmed_R2.fastq.gz" \
+            -o "${contig_dir}/${library_id}_out"
 fi
+
 
 if [[ ! -s "${contig_dir}/${library_id}_out/final.contigs.fa" ]]; then
   echo "❌ ERROR: MEGAHIT did not produce a final contigs file or it is empty."

@@ -20,7 +20,7 @@ project="${PROJECT_NAME}"
 # --- Detect direct manual qsub of launcher ---
 if [[ -z "${input_list:-}" || -z "${task_script:-}" ]]; then
   echo "⚠️ WARNING: It appears you may have manually submitted parallel_task_launcher.pbs via qsub."
-  echo "⚠️ This script is designed to be launched via a run script (e.g., ./${project}_download_sra_run.sh) that sets required environment variables."
+  echo "⚠️ This script is designed to be launched via a run script (e.g., ./${project}_run.sh) that sets required environment variables."
   echo ""
   echo "❌ Missing variables:"
   [[ -z "${input_list:-}" ]] && echo "  - input_list"
@@ -30,98 +30,120 @@ if [[ -z "${input_list:-}" || -z "${task_script:-}" ]]; then
   exit 1
 fi
 
+# --- Job Setup ---
 start_time=$(date)
-echo "Parallel job started at: $start_time"
-echo "User:        ${USER_ID}"
-echo "Project dir: /scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}"
-echo "Task script: $task_script"
-echo "Input list : $input_list"
-echo "Total CPUs allocated (PBS_NCPUS): $PBS_NCPUS"
-echo "Nodefile:"
-cat "$PBS_NODEFILE"
-echo "Date:       $(date +%Y-%m-%d)"
-echo "PBS Job ID: $PBS_JOBID"
-echo "Logs will be stored in: /scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}/logs"
-
 log_dir="/scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}/logs"
 mkdir -p "$log_dir"
 
 module load nci-parallel/1.0.0a
 
-# --- Define number of CPUs per task ---
-ncpus_per_task="${NCPUS_PER_TASK:-1}"  # Default to 1 if not provided
+# --- Derived Variables ---
+ncpus_per_task="${NCPUS_PER_TASK:-1}"
+input_cmd_file="$PBS_JOBFS/parallel_cmds.txt"
 
-# --- Validate variables ---
+# --- Validate inputs ---
 if [[ ! -f "$input_list" ]]; then
-    echo "❌ ERROR: Input list '$input_list' not found!" >&2
-    exit 1
+  echo "❌ ERROR: Input list '$input_list' not found!" >&2
+  exit 1
 fi
 
 if [[ ! -x "$task_script" ]]; then
-    echo "⚠️  WARNING: Task script is not executable; will wrap in 'bash'."
+  echo "⚠️  WARNING: Task script is not executable; will wrap in 'bash'."
 fi
 
-input_cmd_file="$PBS_JOBFS/parallel_cmds.txt"
+# --- Count tasks and compute number of MPI ranks ---
+num_tasks=$(wc -l < "$input_list")
+total_procs=$(( PBS_NCPUS / ncpus_per_task ))
+num_waves=$(( (num_tasks + total_procs - 1) / total_procs ))
 
+# --- Determine optimized per-task timeout ---
+pbs_walltime_secs=$(qstat -f "$PBS_JOBID" | awk -F= '/Resource_List.walltime/ {
+  split($2, t, ":"); print t[1]*3600 + t[2]*60 + t[3]
+}')
+default_timeout=$(( pbs_walltime_secs * 95 / 100 / num_waves ))
+nci_timeout="${NCI_TIMEOUT:-$default_timeout}"
+per_task_time_fmt=$(printf '%02d:%02d:%02d' $((nci_timeout/3600)) $(((nci_timeout%3600)/60)) $((nci_timeout%60)))
+
+# --- Timeout Info Summary ---
+echo "🧮 Optimized Timeout Calculation:"
+echo "   ➤ Total tasks:             $num_tasks"
+echo "   ➤ Parallel tasks (ranks):  $total_procs"
+echo "   ➤ Task waves:              $num_waves"
+echo "   ➤ Total PBS walltime:      ${pbs_walltime_secs} sec"
+echo "   ➤ Timeout per task:        ${nci_timeout} sec (~${per_task_time_fmt})"
+
+# --- Create input command file ---
 if [[ ! -x "$task_script" ]]; then
   sed "s|^|bash $task_script |" "$input_list" > "$input_cmd_file"
 else
   sed "s|^|$task_script |" "$input_list" > "$input_cmd_file"
 fi
 
-echo "🔢 Total commands: $(wc -l < "$input_list")"
-echo "📄 Commands written to: $input_cmd_file"
-echo "📋 First 3 commands:"
+# --- Print Info ---
+echo "Job started at: $start_time"
+echo "User:            ${USER_ID}"
+echo "Project dir:     /scratch/${ROOT_PROJECT}/${USER_ID}/${PROJECT_NAME}"
+echo "Task script:     $task_script"
+echo "Accession list:  $input_list"
+echo "Total CPUs:      $PBS_NCPUS"
+echo "CPUs per task:   $ncpus_per_task"
+echo "Commands file:   $input_cmd_file"
+echo "First 3 commands:"
 head -n 3 "$input_cmd_file"
+echo "📍 Nodefile:"
+cat "$PBS_NODEFILE"
+echo "Log dir:         $log_dir"
+echo "PBS Job ID:      $PBS_JOBID"
 
-# --- Calculate MPI ranks based on available CPUs and CPUs per task ---
-total_procs=$(( PBS_NCPUS / ncpus_per_task ))
-
-# --- Validate resource configuration ---
+# --- Sanity checks ---
 if (( PBS_NCPUS % ncpus_per_task != 0 )); then
   echo "❌ ERROR: PBS_NCPUS ($PBS_NCPUS) is not divisible by NCPUS_PER_TASK ($ncpus_per_task)." >&2
-  echo "Please adjust your requested CPUs or CPUs per task so they divide evenly."
-  echo "Example: For NCPUS_PER_TASK=4, request 4, 8, 12, 16, etc."
   exit 1
 fi
 
 if (( total_procs < 1 )); then
   echo "❌ ERROR: Not enough CPUs to launch even one MPI rank (total_procs=$total_procs)." >&2
-  echo "Make sure your PBS_NCPUS is larger than or equal to NCPUS_PER_TASK."
   exit 1
 fi
 
 if (( total_procs < PBS_NCPUS / 2 )); then
   echo -e "\033[1;33m⚠️ WARNING:\033[0m Fewer MPI ranks ($total_procs) than CPUs allocated ($PBS_NCPUS)."
-  echo -e "▶️ This happens because you requested $PBS_NCPUS CPUs total and set each task to use ${NCPUS_PER_TASK} CPUs."
-  echo -e "▶️ Therefore, $PBS_NCPUS ÷ ${NCPUS_PER_TASK} = $total_procs parallel tasks possible."
-  echo -e ""
-  echo -e "\033[1;34mℹ️ Example:\033[0m"
-  echo -e "   If you have more libraries in your input list (e.g., 3 libraries) but fewer tasks launching (e.g., 2 ranks),"
-  echo -e "   consider lowering NCPUS_PER_TASK to 4 or 2 to allow more tasks to run simultaneously."
-  echo -e ""
-  echo -e "\033[1;32m✅ Tip:\033[0m Use the '-k' option in your run script to adjust NCPUS_PER_TASK dynamically."
-  echo ""
+  echo -e "▶️ Consider reducing NCPUS_PER_TASK or increasing task count."
 fi
 
-echo "CPUs per task: $ncpus_per_task"
-echo "MPI ranks to launch: $total_procs"
+# --- Emit Metadata Block for .err log consumers ---
+echo "----- JOB METADATA BEGIN -----" >&2
+echo "ACCESSION_LIST_USED: $input_list" >&2
+echo "ACCESSION_LIST_MD5: $(md5sum "$input_list" | awk '{print $1}')" >&2
+echo "TASK_SCRIPT_USED: $task_script" >&2
+echo "ROOT_PROJECT: ${ROOT_PROJECT}" >&2
+echo "PROJECT_NAME: ${PROJECT_NAME}" >&2
+echo "USER_ID: ${USER_ID}" >&2
+echo "PBS_JOBID: $PBS_JOBID" >&2
+echo "PBS_O_WORKDIR: $PBS_O_WORKDIR" >&2
+echo "PBS_NCPUS: $PBS_NCPUS" >&2
+echo "NCPUS_PER_TASK: $ncpus_per_task" >&2
+echo "MPI_RANKS: $total_procs" >&2
+echo "TASK_WAVES: $num_waves" >&2
+echo "NCI_TIMEOUT: $nci_timeout" >&2
+echo "JOB_SUBMIT_TIME: $start_time" >&2
+echo "COMMAND_FILE: $input_cmd_file" >&2
+echo "----- JOB METADATA END -----" >&2
 
-# --- Run using mpirun ---
+# --- Launch Parallel Tasks ---
 if (( ncpus_per_task > 1 )); then
-    # Multi-core per task
-    echo "🚀 Launching multi-core parallel tasks with CPU pinning"
-    mpirun -np "$total_procs" \
-           --map-by slot:PE="$ncpus_per_task" \
-           nci-parallel --input-file "$input_cmd_file" --timeout 12000 --verbose
+  echo "🚀 Launching multi-core tasks with CPU pinning..."
+  mpirun -np "$total_procs" \
+         --map-by slot:PE="$ncpus_per_task" \
+         nci-parallel --input-file "$input_cmd_file" --timeout "$nci_timeout" --verbose
 else
-    # Single-core per task
-    echo "🚀 Launching single-core parallel tasks"
-    mpirun -np "$PBS_NCPUS" \
-           --map-by slot \
-           nci-parallel --input-file "$input_cmd_file" --timeout 12000 --verbose
+  echo "🚀 Launching single-core tasks..."
+  mpirun -np "$PBS_NCPUS" \
+         --map-by slot \
+         nci-parallel --input-file "$input_cmd_file" --timeout "$nci_timeout" --verbose
 fi
 
+# --- Completion ---
 end_time=$(date)
 echo "✅ Job completed at: $end_time"
-echo "Individual logs are saved under: $log_dir"
+echo "📦 Logs saved in: $log_dir"

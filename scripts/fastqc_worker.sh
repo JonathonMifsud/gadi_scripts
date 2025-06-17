@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: fastqc_worker.sh
-# Author: JCO Mifsud
 # Description: Worker script to run FastQC on raw/trimmed/unpaired reads using PBS on Gadi.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################

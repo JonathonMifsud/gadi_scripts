@@ -1,7 +1,6 @@
 #!/bin/bash
 ############################################################################################################
 # Script Name: multiqc_run.pbs
-# Author: JCO Mifsud
 # Description: PBS script to generate a filtered MultiQC summary of FastQC results on Gadi.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################

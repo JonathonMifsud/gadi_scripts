@@ -1,8 +1,7 @@
 #!/bin/bash
 
 ############################################################################################################
-# Script Name: download_sra_run.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
+# Script Name: download_sra_runner.sh
 # Description: Launches a parallel SRA download job using nci-parallel and PBS on Gadi.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
@@ -70,18 +69,18 @@ show_help() {
   echo "  -m    Memory per job [default: 6GB]"
   echo "  -t    Walltime [default: 04:00:00]"
   echo "  -q    PBS queue [default: copyq]"
-  echo "  -p    NCI project code [default: {$root_project}]"
-  echo "  -r    Storage resources [default: gdata/{$root_project}+scratch/{$root_project}]"
+  echo "  -p    NCI project code [default: ${root_project}]"
+  echo "  -r    Storage resources [default: gdata/${root_project}+scratch/${root_project}]"
   echo "  -n    Number of parallel jobs to run [default: 1]"
   echo "  -h    Show this help message"
   echo -e ""
 
   echo -e "\033[1;34mExample:\033[0m"
   echo -e "\033[32m  Submit a single PBS job:\033[0m"
-  echo -e "    $0 -f /scratch/{$root_project}/${user}/${project}/accession_lists/setone"
+  echo -e "    $0 -f /scratch/${root_project}/${user}/${project}/accession_lists/setone"
   echo -e ""
   echo -e "\033[32m  Submit multiple PBS jobs in parallel (split into 4 chunks):\033[0m"
-  echo -e "    $0 -f /scratch/{$root_project}/${user}/${project}/accession_lists/setone -n 4"
+  echo -e "    $0 -f /scratch/${root_project}/${user}/${project}/accession_lists/setone -n 4"
   echo -e ""
 
   echo -e "\033[1;33mNotes:\033[0m"
@@ -203,3 +202,40 @@ else
 
   echo -e "\033[32m Launched $num_jobs PBS jobs from chunks under: $chunk_dir\033[0m"
 fi
+
+# --- Calculate estimated per-task timeout ---
+IFS=: read -r hh mm ss <<< "$walltime"
+total_walltime_secs=$((10#$hh * 3600 + 10#$mm * 60 + 10#$ss))
+num_ranks=$(( ncpus / ncpus_per_task ))
+
+# Full list estimation
+num_waves_full=$(( (num_tasks + num_ranks - 1) / num_ranks ))
+timeout_full=$(( total_walltime_secs * 95 / 100 / num_waves_full ))
+timeout_full_fmt=$(printf '%02d:%02d:%02d' $((timeout_full / 3600)) $(( (timeout_full % 3600) / 60 )) $((timeout_full % 60)))
+
+# Estimate timeout per chunk (if split into multiple jobs)
+avg_chunk_tasks=$(( (num_tasks + num_jobs - 1) / num_jobs ))
+waves_per_chunk=$(( (avg_chunk_tasks + num_ranks - 1) / num_ranks ))
+timeout_chunk=$(( total_walltime_secs * 95 / 100 / waves_per_chunk ))
+timeout_chunk_fmt=$(printf '%02d:%02d:%02d' $((timeout_chunk / 3600)) $(( (timeout_chunk % 3600) / 60 )) $((timeout_chunk % 60)))
+
+# --- Final Job Configuration Summary ---
+echo -e "\nPBS Job Configuration Summary:"
+printf "   Accession tasks total:        %s\n" "$num_tasks"
+printf "   Parallel MPI ranks:           %s (ncpus / ncpus_per_task)\n" "$num_ranks"
+printf "   Total CPUs per job:           %s\n" "$ncpus"
+printf "   CPUs per task:                %s\n" "$ncpus_per_task"
+printf "   Memory per job:               %s\n" "$mem"
+printf "   Walltime per job:             %s\n" "$walltime"
+printf "   Number of PBS jobs:           %s\n" "$num_jobs"
+if (( num_jobs == 1 )); then
+  printf "   Estimated task waves:         %s (tasks ÷ ranks)\n" "$num_waves_full"
+  printf "   Timeout per task:             %s seconds (~%s)\n" "$timeout_full" "$timeout_full_fmt"
+else
+  printf "   Estimated avg tasks/chunk:    %s\n" "$avg_chunk_tasks"
+  printf "   Estimated task waves/chunk:   %s\n" "$waves_per_chunk"
+  printf "   Timeout per task (per chunk): %s seconds (~%s)\n" "$timeout_chunk" "$timeout_chunk_fmt"
+  echo ""
+  echo "Note: Each PBS job will calculate its own optimized timeout based on its chunk size."
+fi
+

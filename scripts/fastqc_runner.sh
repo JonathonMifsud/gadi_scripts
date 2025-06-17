@@ -1,7 +1,6 @@
 #!/bin/bash
 ############################################################################################################
 # Script Name: fastqc_run.sh
-# Author: JCO Mifsud
 #   This script launches parallel FastQC jobs on Gadi using nci-parallel and PBS, based on an accession 
 #   list of libraries provided with the -f flag. Users can choose which types of reads to analyze 
 #   (raw, trimmed, unpaired) via the -t option, if you want more than one use commas.
@@ -53,7 +52,7 @@ log_dir="${base_dir}/logs"
 task_script="${script_dir}/fastqc_worker.sh"
 fastqc_out="${base_dir}/fastqc"
 multiqc_out="${base_dir}/multiqc"
-multiqc_script="${script_dir}/multiqc_run.sh"
+multiqc_script="${script_dir}/multiqc_runner.sh"
 
 export PATH="/g/data/fo27/software/singularity/bin:$PATH"
 
@@ -195,3 +194,15 @@ qsub -W depend=afterok:$depstring \
      "$multiqc_script"
 
 echo -e "\033[36m📊 MultiQC job submitted. Will run after all FastQC jobs complete.\033[0m"
+
+# --- Parse and summarize walltime ---
+IFS=: read -r hh mm ss <<< "$walltime"
+total_walltime_secs=$((10#$hh * 3600 + 10#$mm * 60 + 10#$ss))
+
+# --- Final Summary ---
+echo -e "\nPBS Job Configuration Summary:"
+printf "   Job name:                %s\n" "${job_name}"
+printf "   CPUs allocated:          %s\n" "$ncpus"
+printf "   Memory allocated:        %s\n" "$mem"
+printf "   Walltime allocated:      %s (%s seconds)\n" "$walltime" "$total_walltime_secs"
+echo "   Note: This job is not parallelized. All resources are used by a single task."

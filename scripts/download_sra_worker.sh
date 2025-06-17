@@ -2,7 +2,6 @@
 
 ############################################################################################################
 # Script Name: download_sra_worker.sh
-# Author: JCO Mifsud jonathon.mifsud1@gmail.com
 # Description: Worker script to download SRA data using Kingfisher.
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
