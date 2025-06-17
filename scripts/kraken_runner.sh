@@ -5,6 +5,8 @@
 # GitHub: https://github.com/JonathonMifsud/gadi_scripts
 ############################################################################################################
 
+# Lauren's verison has been tested more so please consider using that one:
+
 set -euo pipefail
 trap 'echo "❌ ERROR: Failure at line $LINENO. Exiting." >&2' ERR
 

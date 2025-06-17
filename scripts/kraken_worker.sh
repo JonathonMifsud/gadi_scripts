@@ -4,6 +4,8 @@
 # Description: Worker script for Kraken2 + Bracken + Krona classification on Gadi (paired & single-end)
 ############################################################################################################
 
+# Lauren's verison has been tested more so please consider using that one:
+
 set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
