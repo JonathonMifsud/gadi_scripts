@@ -29,7 +29,7 @@ ncpus=12
 mem="64GB"
 walltime="48:00:00"
 queue="normal"
-storage="gdata/${root_project}+scratch/${root_project}"
+storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
 num_jobs=1
 diamond_params="--more-sensitive -e 1e-4 -k 10"
 

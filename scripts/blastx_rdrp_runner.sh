@@ -32,7 +32,7 @@ mem="30GB"                       # Memory per PBS job
 walltime="04:00:00"              # Max walltime
 num_jobs=1                       # Number of PBS jobs to split input into
 queue="normal"                   # PBS queue
-storage="gdata/${root_project}+scratch/${root_project}" # PBS storage
+storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
 
 # ----------------------------------------
 # Paths

@@ -42,7 +42,7 @@ mem="16GB"
 walltime="02:00:00"
 num_jobs=1
 queue="normal"
-storage="gdata/${root_project}+scratch/${root_project}"
+storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
 
 # ----------------------------------------
 # Paths

@@ -29,7 +29,7 @@ ncpus=6
 mem="24GB"
 walltime="04:00:00"
 queue="normal"
-storage="gdata/${root_project}+scratch/${root_project}"
+storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
 
 # ----------------------------------------
 # Paths
