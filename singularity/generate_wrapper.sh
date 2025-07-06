@@ -1,4 +1,3 @@
-[jm8761@gadi-login-04 scripts]$ cat generate_wrapper.sh
 #!/bin/bash
 
 # =============================================================================
@@ -49,7 +48,7 @@ error_exit() {
 
 # Ensure Singularity is installed or load it
 if ! command -v singularity &> /dev/null; then
-    echo "Singularity not found in PATH. Trying to load the module..."
+    echo "Singularity not found in PATH. Trying to load the module..." 
     module load singularity
     if ! command -v singularity &> /dev/null; then
         error_exit "Singularity is still not available after 'module load'. Please check your environment."
@@ -181,18 +180,18 @@ show_help() {
 
 # Ensure Singularity is installed or load it
 if ! command -v singularity &> /dev/null; then
-    echo "Singularity not found in PATH. Trying to load the module..."
+    echo "Singularity not found in PATH. Trying to load the module..." >&2
     module load singularity
     if ! command -v singularity &> /dev/null; then
-        error_exit "Singularity is still not available after 'module load'. Please check your environment."
+        error_exit "Singularity is still not available after 'module load'. Please check your environment." >&2
     else
-        echo "Singularity module loaded successfully."
+        echo "Singularity module loaded successfully." >&2
     fi
 fi
 
 # Ensure the config file exists
 if [ ! -f "\$config_file" ]; then
-    echo -e "\${RED}Error:\${RESET} Config file not found at \$config_file"
+    echo -e "\${RED}Error:\${RESET} Config file not found at \$config_file" >&2
     exit 1
 fi
 
@@ -201,7 +200,7 @@ software_version=\$(grep "^$software_name=" "\$config_file" | cut -d '=' -f2)
 
 # Validate that a version was found
 if [ -z "\$software_version" ]; then
-    echo -e "\${RED}Error:\${RESET} No version found for $software_name in \$config_file"
+    echo -e "\${RED}Error:\${RESET} No version found for $software_name in \$config_file" >&2
     exit 1
 fi
 
@@ -210,8 +209,8 @@ image="\$image_dir/$software_name-\$software_version.sif"
 
 # Check if the expected Singularity image exists
 if [ ! -f "\$image" ]; then
-    echo -e "\${RED}Error:\${RESET} $software_name image not found at \$image"
-    echo -e "Run the update script to pull the latest image:"
+    echo -e "\${RED}Error:\${RESET} $software_name image not found at \$image" >&2
+    echo -e "Run the update script to pull the latest image:" >&2
     echo -e "  \${CYAN}bash /g/data/fo27/software/singularity/update_images.sh\${RESET}"
     exit 1
 fi
@@ -276,35 +275,37 @@ for path in "\${extra_bind_paths[@]}"; do
     fi
 done
 
-# Inform the user about the execution
-echo -e "\n\${BOLD}-------------------------------------------\${RESET}"
-echo -e "\${CYAN}$software_name Execution\${RESET}"
-echo -e "\${BOLD}-------------------------------------------\${RESET}"
-echo -e "\${BOLD}Version:\${RESET}        \$software_version"
-echo -e "\${BOLD}Image:\${RESET}          \$image"
-echo -e "\${BOLD}Binding Paths:\${RESET}  \$bind_paths"
-echo -e "\${BOLD}-------------------------------------------\${RESET}"
+# Inform the user about the execution (send to stderr to avoid stdout contamination)
+{
+  echo -e "\n\${BOLD}-------------------------------------------\${RESET}"
+  echo -e "\${CYAN}$software_name Execution\${RESET}"
+  echo -e "\${BOLD}-------------------------------------------\${RESET}"
+  echo -e "\${BOLD}Version:\${RESET}        \$software_version"
+  echo -e "\${BOLD}Image:\${RESET}          \$image"
+  echo -e "\${BOLD}Binding Paths:\${RESET}  \$bind_paths"
+  echo -e "\${BOLD}-------------------------------------------\${RESET}"
+} >&2
 
 # Warn if the first command is not found inside the container
 if ! singularity exec --bind "\$bind_paths" "\$image" which "\$1" &> /dev/null; then
-    echo -e "\${RED}Error:\${RESET} '\$1' is not a recognized command inside the container."
-    # Check if the main software command is valid (i.e., it's a single-command tool)
+    echo -e "\${RED}Error:\${RESET} '\$1' is not a recognized command inside the container." >&2
+    # Check if the main software command is valid (i.e., it's a single-command tool) 
     if singularity exec --bind "\$bind_paths" "\$image" which $software_name &> /dev/null; then
-        echo -e "Try running: \${CYAN}\$0 --help\${RESET} for guidance."
+        echo -e "Try running: \${CYAN}\$0 --help\${RESET} for guidance." >&2
     else
-        echo -e "This software does not support a top-level command."
-        echo -e "Please run a valid subcommand like: \${CYAN}\$0 blastn --help\${RESET}"
+        echo -e "This software does not support a top-level command." >&2
+        echo -e "Please run a valid subcommand like: \${CYAN}\$0 blastn --help\${RESET}" >&2
     fi
     exit 1
 fi
 
 if [[ \$# -eq 0 ]]; then
-    echo -e "\${RED}Error:\${RESET} No command or arguments provided."
-    echo -e "For example: \${CYAN}\$0 blastn -query input.fa -db nt -out result.txt\${RESET}"
+    echo -e "\${RED}Error:\${RESET} No command or arguments provided." >&2
+    echo -e "For example: \${CYAN}\$0 blastn -query input.fa -db nt -out result.txt\${RESET}" >&2
     exit 1
 fi
 
-# Execute the software inside the Singularity container
+# Execute the software inside the Singularity container 
 singularity exec --bind "\$bind_paths" "\$image" "\$@"
 
 
@@ -313,12 +314,13 @@ exit_status=\$?
 
 # Check if the command executed successfully
 if [ \$exit_status -ne 0 ]; then
-    echo -e "\${RED}Error:\${RESET} $software_name execution failed with exit code \$exit_status"
+    echo -e "\${RED}Error:\${RESET} $software_name execution failed with exit code \$exit_status" >&2
     exit \$exit_status
 fi
 
-echo -e "\${GREEN}$software_name execution completed successfully.\${RESET}"
+echo -e "\${GREEN}$software_name execution completed successfully.\${RESET}" >&2
 exit 0
+
 EOF
 
 # Make the script executable

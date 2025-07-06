@@ -34,7 +34,6 @@ mkdir -p "${scratch_base}"/raw_reads "${scratch_base}"/trimmed_reads
 
 echo "Moving files to ${scratch_base}/scripts ..."
 mv ./* "${scratch_base}/scripts"
-mv ../environments/* "${scratch_base}/environments/" 2>/dev/null
 mv ../adapters/* "${scratch_base}/adapters/" 2>/dev/null
 
 cd "${scratch_base}/scripts" || exit
