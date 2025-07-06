@@ -55,5 +55,8 @@ for f in *.sh *.pbs; do
     sed -i "s|^email=\"\"$|email=\"$email\"|g" "$f"
 done
 
+chmod +x ${scratch_base}/scripts/*
+
 echo "✅ Project setup complete."
 echo "Working directory: ${scratch_base}/scripts"
+echo "You can remove the gadi_scripts repository now if you wish :)"
