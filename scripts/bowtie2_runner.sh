@@ -13,8 +13,8 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # Project Metadata
 # ----------------------------------------
 
-project="myproject"              # Name of project directory under /scratch/<root>/<user>/
-root_project="fo27"              # NCI project code
+project=""              # Name of project directory under /scratch/<root>/<user>/
+root_project=""              # NCI project code
 user=$(whoami)
 
 # ----------------------------------------
@@ -80,7 +80,7 @@ show_help() {
   echo "  -h    Show help"
   echo ""
   echo -e "\033[1;34mExample:\033[0m"
-  echo "  $0 -f /scratch/fo27/${user}/${project}/mapping/mapping.csv -n 4"
+  echo "  $0 -f /scratch/${root_project}/${user}/${project}/mapping/mapping.csv -n 4"
   echo ""
   exit 1
 }

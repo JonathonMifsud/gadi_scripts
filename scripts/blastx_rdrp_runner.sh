@@ -14,8 +14,8 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # Project Metadata
 # ----------------------------------------
 
-project="mytest"                 # Project name for organizational purposes (under /scratch)
-root_project="fo27"              # Gadi NCI project code (PBS -P flag)
+project=""                 # Project name for organizational purposes (under /scratch)
+root_project=""              # Gadi NCI project code (PBS -P flag)
 user=$(whoami)                   # User ID (Automatically pulled from system)
 
 # ----------------------------------------

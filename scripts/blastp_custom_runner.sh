@@ -14,8 +14,8 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # ----------------------------------------
 
 job_name="blastp_custom"
-root_project="fo27"
-project="my_project"
+root_project=""
+project=""
 user=$(whoami)
 ncpus=12
 mem="64GB"

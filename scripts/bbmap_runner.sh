@@ -14,7 +14,7 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # ----------------------------------------
 
 project=""
-root_project="fo27"
+root_project=""
 user=$(whoami)
 
 # ----------------------------------------

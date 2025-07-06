@@ -13,8 +13,8 @@ trap 'echo "❌ ERROR: Failure at line $LINENO. Exiting." >&2' ERR
 # ----------------------------------------
 # Metadata and Defaults
 # ----------------------------------------
-project="mytest"
-root_project="fo27"
+project=""
+root_project=""
 user=$(whoami)
 
 job_name="kraken_classify"

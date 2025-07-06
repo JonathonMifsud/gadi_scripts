@@ -13,8 +13,8 @@ trap 'echo "ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # Project Metadata
 # ----------------------------------------
 
-project="mytest"
-root_project="fo27"
+project=""
+root_project=""
 user=$(whoami)
 
 # ----------------------------------------
