@@ -13,8 +13,11 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # Project Metadata
 # ----------------------------------------
 
-project=""              # Name of project directory under /scratch/<root>/<user>/
-root_project=""              # NCI project code
+# Project name for organizational purposes (under /scratch)
+project=""
+# Gadi NCI project code (PBS -P flag)
+root_project=""
+# User ID (Automatically pull username on Gadi)
 user=$(whoami)
 
 # ----------------------------------------

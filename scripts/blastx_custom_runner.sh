@@ -10,13 +10,21 @@ set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 
 # ----------------------------------------
+# Project Metadata
+# ----------------------------------------
+
+# Project name for organizational purposes (under /scratch)
+project=""
+# Gadi NCI project code (PBS -P flag)
+root_project=""
+# User ID (Automatically pull username on Gadi)
+user=$(whoami)
+
+# ----------------------------------------
 # Default Configuration
 # ----------------------------------------
 
 job_name="blastx_custom"
-root_project=""
-project=""
-user=$(whoami)
 ncpus=12
 mem="64GB"
 walltime="48:00:00"

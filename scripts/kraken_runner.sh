@@ -11,12 +11,18 @@ set -euo pipefail
 trap 'echo "❌ ERROR: Failure at line $LINENO. Exiting." >&2' ERR
 
 # ----------------------------------------
-# Metadata and Defaults
+# Project Metadata 
 # ----------------------------------------
+# Project name for organizational purposes (under /scratch)
 project=""
+# Gadi NCI project code (PBS -P flag)
 root_project=""
+# User ID (Automatically pull username on Gadi)
 user=$(whoami)
 
+# ----------------------------------------
+# Job Configuration
+# ----------------------------------------
 job_name="kraken_classify"
 ncpus=12
 mem="30GB"
