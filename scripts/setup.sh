@@ -1,5 +1,4 @@
 #!/bin/bash
-# BatchArtemisSRAMiner (Gadi Setup)
 
 set -euo pipefail
 trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR

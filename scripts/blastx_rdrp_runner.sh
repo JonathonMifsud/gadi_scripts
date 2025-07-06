@@ -162,7 +162,7 @@ if (( num_jobs == 1 )); then
     -l ncpus="$ncpus",mem="$mem",walltime="$walltime",storage="$storage" \
     -q "$queue" -P "$root_project" \
     -v input_list="$input_list",task_script="$task_script",ROOT_PROJECT="$root_project",PROJECT_NAME="$project",USER_ID="$user",NCPUS_PER_TASK="$ncpus_per_task",RDRP_DB="$rdrp_db" \
-    "${script_dir}/parallel_task_launcher.pbs"
+    "${script_dir}/${project}_parallel_task_launcher.pbs"
 
   echo -e "\033[32m✅ Launched single PBS job: $input_list\033[0m"
 
@@ -182,7 +182,7 @@ else
       -l ncpus="$ncpus",mem="$mem",walltime="$walltime",storage="$storage" \
       -q "$queue" -P "$root_project" \
       -v input_list="$chunk_file",task_script="$task_script",ROOT_PROJECT="$root_project",PROJECT_NAME="$project",USER_ID="$user",NCPUS_PER_TASK="$ncpus_per_task",RDRP_DB="$rdrp_db" \
-      "${script_dir}/parallel_task_launcher.pbs"
+      "${script_dir}/${project}_parallel_task_launcher.pbs"
 
     echo -e "\033[32m✅ Launched PBS job: $chunk_jobname for chunk: $chunk_file\033[0m"
   done
