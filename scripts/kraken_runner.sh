@@ -36,7 +36,7 @@ script_dir="/scratch/${root_project}/${user}/${project}/scripts"
 base_dir="/scratch/${root_project}/${user}/${project}"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
-task_script="${script_dir}/kraken_worker.sh"
+task_script="${script_dir}/${project}_kraken_worker.sh"
 
 mkdir -p "$log_dir"
 

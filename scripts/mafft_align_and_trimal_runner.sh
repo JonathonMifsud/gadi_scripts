@@ -19,6 +19,7 @@ project=""
 root_project=""
 # User ID (Automatically pull username on Gadi)
 user=$(whoami)
+
 # ----------------------------------------
 # PBS Job Config
 # ----------------------------------------
@@ -37,7 +38,7 @@ storage="gdata/${root_project}+scratch/${root_project}"
 base_dir="/scratch/${root_project}/${user}/${project}"
 log_dir="${base_dir}/logs"
 script_dir="${base_dir}/scripts"
-task_script="${script_dir}/mafft_align_and_trimal_worker.sh"
+task_script="${script_dir}/${project}_mafft_align_and_trimal_worker.sh"
 mkdir -p "$log_dir"
 
 # ----------------------------------------

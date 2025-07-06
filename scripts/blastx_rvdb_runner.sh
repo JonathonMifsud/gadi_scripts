@@ -42,7 +42,7 @@ base_dir="/scratch/${root_project}/${user}/${project}"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
 task_script="${script_dir}/blastx_rvdb_worker.sh"
-blast_dir="${base_dir}/blast_results"
+blast_dir="${base_dir}/${project}_blast_results"
 
 # No default DB — user must provide
 rvdb_db=""

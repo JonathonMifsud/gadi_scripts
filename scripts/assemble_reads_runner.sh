@@ -40,7 +40,7 @@ script_dir="/scratch/${root_project}/${user}/${project}/scripts"        # Path t
 base_dir="/scratch/${root_project}/${user}/${project}"
 input_base="${base_dir}/accession_lists"                                 # Path to accession lists
 log_dir="/scratch/${root_project}/${user}/${project}/logs"               # Path where job logs will be stored
-task_script="${script_dir}/assemble_reads_worker.sh"                     # Path to the task worker script
+task_script="${script_dir}/${project}_assemble_reads_worker.sh"                     # Path to the task worker script
 contig_dir="${base_dir}/contigs"                                     # Path to store contigs
 
 # ----------------------------------------

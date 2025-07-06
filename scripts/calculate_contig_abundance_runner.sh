@@ -56,7 +56,7 @@ base_dir="/scratch/${root_project}/${user}/${project}"
 script_dir="${base_dir}/scripts"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
-task_script="${script_dir}/calculate_contig_abundance_worker.sh"
+task_script="${script_dir}/${project}_calculate_contig_abundance_worker.sh"
 abundance_dir="${base_dir}/abundance"
 
 # ----------------------------------------

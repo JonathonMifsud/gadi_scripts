@@ -42,7 +42,7 @@ script_dir="${base_dir}/scripts"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
 blast_results_dir="${base_dir}/blast_results"
-task_script="${script_dir}/blastx_nr_worker.sh"
+task_script="${script_dir}/${project}_blastx_nr_worker.sh"
 
 # DIAMOND Database
 nr_db=""

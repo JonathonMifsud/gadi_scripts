@@ -36,7 +36,7 @@ diamond_params="--more-sensitive -e 1e-4 -k 10"
 # Paths
 script_dir="/scratch/${root_project}/${user}/${project}/scripts"
 log_dir="/scratch/${root_project}/${user}/${project}/logs"
-task_script="${script_dir}/blastx_custom_worker.sh"
+task_script="${script_dir}/${project}_blastx_custom_worker.sh"
 
 # ----------------------------------------
 # Help Functions

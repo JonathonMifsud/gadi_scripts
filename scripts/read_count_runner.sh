@@ -41,7 +41,7 @@ base_dir="/scratch/${root_project}/${user}/${project}"
 script_dir="${base_dir}/scripts"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
-task_script="${script_dir}/read_count_worker.sh"
+task_script="${script_dir}/${project}_read_count_worker.sh"
 output_dir="${base_dir}/read_count"
 
 # ----------------------------------------

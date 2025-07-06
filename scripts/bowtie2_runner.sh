@@ -41,7 +41,7 @@ base_dir="/scratch/${root_project}/${user}/${project}"
 script_dir="${base_dir}/scripts"
 input_base="${base_dir}/mapping"
 log_dir="${base_dir}/logs"
-task_script="${script_dir}/bowtie_worker.sh"
+task_script="${script_dir}/${project}_bowtie_worker.sh"
 csv_file=""
 log_date=$(date +%Y%m%d)
 

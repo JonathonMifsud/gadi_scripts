@@ -40,7 +40,7 @@ storage="gdata/${root_project}+scratch/${root_project}" # Storage resource requi
 script_dir="/scratch/${root_project}/${user}/${project}/scripts"        # Path to PBS and worker scripts
 input_base="/scratch/${root_project}/${user}/${project}/accession_lists" # Path to accession lists
 log_dir="/scratch/${root_project}/${user}/${project}/logs"               # Path where job logs will be stored
-task_script="${script_dir}/trim_reads_worker.sh"                        # Path to the task worker script
+task_script="${script_dir}/${project}_trim_reads_worker.sh"                        # Path to the task worker script
 
 # ----------------------------------------
 # Help Function

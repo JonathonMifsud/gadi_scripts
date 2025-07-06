@@ -122,7 +122,7 @@ fi
 base_dir="/scratch/${root_project}/${user}/${project}"
 script_dir="${base_dir}/scripts"
 log_dir="${base_dir}/logs"
-worker_script="${script_dir}/bbmap_worker.sh"
+worker_script="${script_dir}/${project}_bbmap_worker.sh"
 
 if [[ ! -x "$worker_script" ]]; then
   echo -e "\033[1;31m❌ ERROR:\033[0m Worker script not executable: $worker_script"

@@ -41,7 +41,7 @@ storage="gdata/${root_project}+scratch/${root_project}" # PBS storage
 script_dir="/scratch/${root_project}/${user}/${project}/scripts"
 input_base="/scratch/${root_project}/${user}/${project}/accession_lists"
 log_dir="/scratch/${root_project}/${user}/${project}/logs"
-task_script="${script_dir}/blastx_rdrp_worker.sh"
+task_script="${script_dir}/${project}_blastx_rdrp_worker.sh"
 
 # Default RdRp DB (can be overridden)
 rdrp_db="/g/data/fo27/databases/blast/RdRp-scan/RdRp-scan_0.90.dmnd"

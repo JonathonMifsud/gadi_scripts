@@ -19,6 +19,7 @@ project=""
 root_project=""
 # User ID (Automatically pull username on Gadi)
 user=$(whoami)
+
 # ----------------------------------------
 # Job Configuration (PBS settings)
 # ----------------------------------------
@@ -39,7 +40,7 @@ extra_args=""
 base_dir="/scratch/${root_project}/${user}/${project}"
 log_dir="${base_dir}/logs"
 script_dir="${base_dir}/scripts"
-task_script="${script_dir}/iqtree_worker.sh"
+task_script="${script_dir}/${project}_iqtree_worker.sh"
 
 mkdir -p "${log_dir}"
 

@@ -41,7 +41,7 @@ script_dir="${base_dir}/scripts"
 input_base="${base_dir}/accession_lists"
 log_dir="${base_dir}/logs"
 blast_results_dir="${base_dir}/blast_results"
-task_script="${script_dir}/blastn_nt_worker.sh"
+task_script="${script_dir}/${project}_blastn_nt_worker.sh"
 
 # BLAST parameters
 nt_db=""
