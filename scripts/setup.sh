@@ -51,9 +51,9 @@ done
 echo "Replacing variables in script contents..."
 for f in *.sh *.pbs; do
     [[ -f "$f" ]] || continue
-    sed -i "s|project=\"\"|project=\"$project\"|g" "$f"
-    sed -i "s|root_project=\"\"|root_project=\"$root_project\"|g" "$f"
-    sed -i "s|email=\"\"|email=\"$email\"|g" "$f"
+    sed -i "s|^project=\"\"$|project=\"$project\"|g" "$f"
+    sed -i "s|^root_project=\"\"$|root_project=\"$root_project\"|g" "$f"
+    sed -i "s|^email=\"\"$|email=\"$email\"|g" "$f"
 done
 
 echo "✅ Project setup complete."
