@@ -25,7 +25,7 @@ nano setup.sh
 Run the setup script:
 
 ```bash
-./setup.sh
+chmod +x ./setup.sh; ./setup.sh
 ```
 
 ### General 
