@@ -74,7 +74,7 @@ show_help() {
   echo "  -t    Walltime [default: ${walltime}]"
   echo "  -q    PBS queue [default: ${queue}]"
   echo "  -p    NCI project code [default: ${root_project}]"
-  echo "  -r    Storage resources [default: gdata/${root_project}+scratch/${root_project}]"
+  echo "  -r    Storage resources [default: gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27]"
   echo "  -n    Number of parallel jobs to run [default: ${num_jobs}]"
   echo "  -h    Show this help message"
   echo -e ""
@@ -256,7 +256,7 @@ else
          -e "$log_dir/${chunk_jobname}_${log_date}_pbs.err" \
          -l ncpus="$ncpus" -l mem="$mem" -l walltime="$walltime" \
          -l storage="$storage" -q "$queue" -P "$root_project" \
-         -v input_list="$chunk_file",task_script="$task_script",ROOT_PROJECT="$root_project",PROJECT_NAME="$project",USER_ID="$USER",NCPUS_PER_TASK="$ncpus_per_task" \
+         -v input_list="$chunk_file",task_script="$task_script",ROOT_PROJECT="$root_project",PROJECT_NAME="$project",USER_ID="$USER",NCPUS_PER_TASK="$ncpus_per_task",STORAGE="$storage" \
          "${script_dir}/${project}_parallel_task_launcher.pbs"
 
     echo -e "\033[32m✅ Launched PBS job: $chunk_jobname for chunk: $chunk_file\033[0m"
