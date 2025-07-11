@@ -32,7 +32,7 @@ mem="6GB"                        # Total memory requested for the job
 walltime="04:00:00"              # Maximum allowed walltime for the PBS job
 num_jobs=1                       # Number of PBS jobs to split input into (chunking)
 queue="copyq"                    # PBS queue to submit to
-storage="gdata/${root_project}+scratch/${root_project}" # Storage resource requirements for PBS job (gdata, scratch)
+storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
 
 # ----------------------------------------
 # Paths
