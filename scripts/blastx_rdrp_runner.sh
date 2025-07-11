@@ -27,9 +27,9 @@ user=$(whoami)
 
 job_name="blastx_rdrp"           # Base name for PBS jobs
 ncpus=12                         # Total CPUs requested for a PBS job
-ncpus_per_task=6                 # CPUs per individual task
+ncpus_per_task=4                 # CPUs per individual task
 mem="30GB"                       # Memory per PBS job
-walltime="04:00:00"              # Max walltime
+walltime="12:00:00"              # Max walltime
 num_jobs=1                       # Number of PBS jobs to split input into
 queue="normal"                   # PBS queue
 storage="gdata/${root_project}+scratch/${root_project}+gdata/fo27+scratch/fo27" # Storage resource requirements for PBS job (gdata, scratch)
