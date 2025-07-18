@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# Singularity Wrapper Script Generator JM2025
+# Singularity Wrapper Script Generator
 # -----------------------------------------------------------------------------
 # This script generates a Singularity wrapper script for running software inside a
 # Singularity container. It dynamically determines the correct image version
@@ -115,7 +115,7 @@ fi
 script_path="$bin_dir/run_${software_name}.sh"
 
 # =============================================================================
-# CREATE WRAPPER SCRIPT JM2025
+# CREATE WRAPPER SCRIPT
 # =============================================================================
 
 cat << EOF > "$script_path"
