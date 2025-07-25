@@ -9,6 +9,7 @@ trap 'echo "❌ ERROR: Unexpected failure at line $LINENO. Exiting." >&2' ERR
 # -------------------------
 # Default Project Settings
 # -------------------------
+
 # Project name for organizational purposes (under /scratch)
 project=""
 # Gadi NCI project code (PBS -P flag)

@@ -195,8 +195,6 @@ detect_layout_and_validate() {
   echo -e "\033[32m✔ Valid layout (${layout}) and files detected for: ${id}\033[0m"
 }
 
-echo -e "\n🔍 Validating raw read files for all ${num_tasks} accessions..."
-
 while IFS= read -r accession; do
   accession=$(echo "$accession" | xargs)  # Trim whitespace
   [[ -z "$accession" ]] && continue
