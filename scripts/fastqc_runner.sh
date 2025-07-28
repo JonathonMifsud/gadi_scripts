@@ -55,7 +55,7 @@ log_dir="${base_dir}/logs"
 task_script="${script_dir}/${project}_fastqc_worker.sh"
 fastqc_out="${base_dir}/fastqc"
 multiqc_out="${base_dir}/multiqc"
-multiqc_script="${script_dir}/multiqc_runner.sh"
+multiqc_script="${script_dir}/${project}_multiqc_runner.sh"
 
 export PATH="/g/data/fo27/software/singularity/bin:$PATH"
 
