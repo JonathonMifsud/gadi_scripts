@@ -85,8 +85,7 @@ All scripts will output logs in the `logs` folder!
 
    2.3 It is advised to check trimming quality on at least a subset of samples using the included FastQC scripts:
 
-   - `fastqc_runner.sh` — runs FastQC on raw and trimmed files  
-   - `multiqc_runner.sh` — summarizes results - might be handy if there are alot of libs
+   - `fastqc_runner.sh` — runs FastQC on raw and trimmed files 
 
    Also check the size of the trimmed read files to ensure that an excessive number of reads isn't being removed. Most importantly, check for adapter contamination.
 
