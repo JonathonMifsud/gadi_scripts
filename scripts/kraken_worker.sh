@@ -22,6 +22,7 @@ user="${USER_ID}"
 project="${PROJECT_NAME}"
 kraken_db="${KRAKEN_DB}"
 cpu="${NCPUS_PER_TASK}"
+export PATH="/g/data/fo27/software/singularity/bin:$PATH"
 
 # --- Input parsing ---
 if [[ $# -lt 1 ]]; then
@@ -96,23 +97,23 @@ krona_html="${out_dir}/${library_id}.b.krona.html"
 # --- Run Kraken2 ---
 echo "🔎 Running Kraken2 on ${library_id} ($layout-end)"
 if [[ "$layout" == "single" ]]; then
-  kraken2 --db "$kraken_db" --single "$fq" \
+  run_kraken2.sh kraken2 --db "$kraken_db" --single "$fq" \
     --output "$kraken_output" --report "$kraken_report" \
     --gzip-compressed --use-names --threads "$cpu"
 else
-  kraken2 --db "$kraken_db" --paired "$fq1" "$fq2" \
+  run_kraken2.sh kraken2 --db "$kraken_db" --paired "$fq1" "$fq2" \
     --output "$kraken_output" --report "$kraken_report" \
     --gzip-compressed --use-names --threads "$cpu"
 fi
 
 # --- Run Bracken ---
 echo "📊 Running Bracken..."
-bracken -d "$kraken_db" -i "$kraken_report" -r 250 -l S -t "$cpu" \
+run_bracken.sh bracken -d "$kraken_db" -i "$kraken_report" -r 250 -l S -t "$cpu" \
   -o "$bracken_output" -w "$bracken_report"
 
 # --- Generate Krona plot ---
 echo "🌈 Generating Krona plot..."
-kreport2krona.py -r "$bracken_report" -o "$krona_txt" --no-intermediate-ranks
-ktImportText "$krona_txt" -o "$krona_html"
+run_krakentools.sh kreport2krona.py -r "$bracken_report" -o "$krona_txt" --no-intermediate-ranks
+run_krona.sh ktImportText "$krona_txt" -o "$krona_html"
 
 echo "✅ Completed classification for $library_id ($layout-end)"
