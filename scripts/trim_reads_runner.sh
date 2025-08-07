@@ -179,10 +179,13 @@ detect_layout_and_validate() {
       echo -e "\033[1;31m❌ ERROR:\033[0m Empty file: $f"
       return 1
     fi
-    if ! gzip -t "$f" &>/dev/null; then
-      echo -e "\033[1;31m❌ ERROR:\033[0m Corrupted or invalid gzip: $f"
-      return 1
-    fi
+    # I have switched off this check for now, as it can be problematic with a large amount of files
+    # when I get a chance I will make this toggleable
+
+    #if ! gzip -t "$f" &>/dev/null; then
+    #  echo -e "\033[1;31m❌ ERROR:\033[0m Corrupted or invalid gzip: $f"
+    #  return 1
+    #fi
   }
 
   if [[ "$layout" == "single" ]]; then
